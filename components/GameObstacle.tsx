@@ -1,409 +1,509 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Heart, ArrowLeft, ArrowRight, Play } from 'lucide-react';
-import { playCoin, playError, playWin, playLevelUp } from '../services/audioService';
-
-interface LevelData {
-  id: number;
-  title: string;
-  bgGradient: string;
-  speed: number;
-}
-
-const LEVELS: LevelData[] = [
-  { id: 1, title: "Nivel 1: El Despertar", bgGradient: "from-indigo-900 to-blue-800", speed: 0.8 },
-  { id: 2, title: "Nivel 2: Wudu Limpio", bgGradient: "from-blue-400 to-cyan-300", speed: 1.0 },
-  { id: 3, title: "Nivel 3: Buenas Palabras", bgGradient: "from-purple-400 to-pink-400", speed: 1.2 },
-  { id: 4, title: "Nivel 4: Paciencia en el Camino", bgGradient: "from-gray-500 to-gray-700", speed: 1.4 },
-  { id: 5, title: "Nivel 5: Llegada a la Mezquita", bgGradient: "from-emerald-500 to-green-700", speed: 1.6 },
-];
-
-interface GameItem {
-  id: number;
-  x: number; // Percentage 0-100
-  y: number; // Percentage 0-100
-  type: 'good' | 'bad';
-  icon: string;
-  label: string;
-}
-
-const GOOD_ITEMS = [
-  { icon: '📖', label: 'Corán' },
-  { icon: '💧', label: 'Wudu' },
-  { icon: '📿', label: 'Dhikr' },
-  { icon: '🤲', label: 'Dua' },
-  { icon: '❤️', label: 'Amor' },
-];
-
-const BAD_ITEMS = [
-  { icon: '😈', label: 'Shaitan' },
-  { icon: '📺', label: 'Distracción' },
-  { icon: '😡', label: 'Ira' },
-  { icon: '💤', label: 'Pereza' },
-  { icon: '🗣️', label: 'Chisme' },
-];
+import React, { useState, useEffect, useRef } from 'react';
+import { Trophy, Zap, Heart, RefreshCw } from 'lucide-react';
+import { playCoin, playError, playWin, playJump, playLevelUp } from '../services/audioService';
 
 interface GameProps {
   onExit: () => void;
   addPoints?: (amount: number) => void;
 }
 
-export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
-  // Game State
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [levelIdx, setLevelIdx] = useState(0);
-  const [iman, setIman] = useState(100);
-  const [distance, setDistance] = useState(0);
-  const [message, setMessage] = useState("¡Usa las flechas para moverte!");
-  const [items, setItems] = useState<GameItem[]>([]);
-  const [showLevelComplete, setShowLevelComplete] = useState(false);
-  const [gameOver, setGameOver] = useState(false);
-  const [playerPos, setPlayerPos] = useState({ x: 50, y: 80 });
+// --- CONSTANTES ADAPTADAS DEL CÓDIGO PYTHON ---
+const MAX_CONCENTRACION = 100;
+// const MIN_CONCENTRACION_CRITICA = 30; // Usado para efectos visuales (rojo)
+// const UMBRAL_COMPLEJIDAD = 70; // Usado para velocidad
 
-  // Refs for Game Loop Logic (To avoid stale closures)
-  const playerPosRef = useRef(playerPos);
-  const gameStateRef = useRef({ isPlaying, gameOver, showLevelComplete, levelIdx, iman });
+type ObstacleType = 'Salto' | 'Deslizarse' | 'Desvio' | 'Susurro' | 'Coin';
+
+interface ObstacleDef {
+    name: string;
+    type: ObstacleType;
+    prob: number;
+    emoji: string;
+}
+
+interface WaqtTheme {
+    id: string; // Fajr, Dhuhr, etc
+    themeName: string; // 'Sueño y Pereza'
+    skyClass: string; // CSS gradient
+    floorClass: string; // CSS color
+    atmosphereEmoji: string;
+    obstacles: ObstacleDef[];
+}
+
+const WAQT_TEMAS: WaqtTheme[] = [
+    {
+        id: 'Fajr',
+        themeName: 'Sueño y Pereza',
+        skyClass: 'from-indigo-900 via-purple-800 to-pink-500', // Amanecer
+        floorClass: 'bg-blue-900',
+        atmosphereEmoji: '💤',
+        obstacles: [
+            { name: 'Almohada Gigante', type: 'Deslizarse', prob: 0.35, emoji: '🛌' }, // Muro
+            { name: 'Cama Bloqueadora', type: 'Salto', prob: 0.30, emoji: '🛏️' },      // Valla
+            { name: 'Botón Snooze', type: 'Desvio', prob: 0.20, emoji: '⏰' },        // Muro
+            { name: 'Susurro Pereza', type: 'Susurro', prob: 0.15, emoji: '😴' },      // Enemigo
+        ]
+    },
+    {
+        id: 'Dhuhr',
+        themeName: 'Mundo Laboral',
+        skyClass: 'from-sky-400 to-blue-200', // Día brillante
+        floorClass: 'bg-gray-400', // Cemento/Oficina
+        atmosphereEmoji: '☀️',
+        obstacles: [
+            { name: 'Pila de Papeles', type: 'Salto', prob: 0.40, emoji: '📑' },
+            { name: 'Smartphone', type: 'Deslizarse', prob: 0.25, emoji: '📱' },
+            { name: 'Colega', type: 'Desvio', prob: 0.20, emoji: '👔' },
+            { name: 'Susurro Dinero', type: 'Susurro', prob: 0.15, emoji: '💸' },
+        ]
+    },
+    {
+        id: 'Maghrib',
+        themeName: 'Tráfico y Prisas',
+        skyClass: 'from-orange-500 via-red-500 to-purple-900', // Atardecer
+        floorClass: 'bg-slate-700', // Asfalto
+        atmosphereEmoji: '🌇',
+        obstacles: [
+            { name: 'Coche Acelerado', type: 'Desvio', prob: 0.35, emoji: '🚗' },
+            { name: 'Luz Roja', type: 'Salto', prob: 0.30, emoji: '🚦' },
+            { name: 'Masa Gente', type: 'Deslizarse', prob: 0.20, emoji: '👥' },
+            { name: 'Susurro Enojo', type: 'Susurro', prob: 0.15, emoji: '😡' },
+        ]
+    },
+    {
+        id: 'Isha',
+        themeName: 'Fatiga y Cansancio',
+        skyClass: 'from-gray-900 to-black', // Noche cerrada
+        floorClass: 'bg-indigo-950',
+        atmosphereEmoji: '🌌',
+        obstacles: [
+            { name: 'Niebla Mental', type: 'Desvio', prob: 0.40, emoji: '☁️' },
+            { name: 'Sombra Lenta', type: 'Deslizarse', prob: 0.25, emoji: '👻' },
+            { name: 'Piedra Tropiezo', type: 'Salto', prob: 0.20, emoji: '🪨' },
+            { name: 'Susurro Duda', type: 'Susurro', prob: 0.15, emoji: '❓' },
+        ]
+    }
+];
+
+interface Entity {
+  id: number;
+  lane: number; // -1, 0, 1
+  z: number; // 0 to 100
+  def: ObstacleDef; // Definición completa
+  collected?: boolean;
+}
+
+export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
+  // --- STATE ---
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
+  const [score, setScore] = useState(0);
+  const [concentration, setConcentration] = useState(MAX_CONCENTRACION);
+  const [currentWaqtIndex, setCurrentWaqtIndex] = useState(0);
+  const [playerLane, setPlayerLane] = useState(0);
+  const [isJumping, setIsJumping] = useState(false);
+  const [message, setMessage] = useState("¡Mantén tu Concentración!");
+  const [highScore, setHighScore] = useState(0);
+  
+  // State to force render on every frame
+  const [, setTick] = useState(0);
+
+  // Derived state for theme
+  const currentTheme = WAQT_TEMAS[currentWaqtIndex];
+
+  // --- REFS ---
+  const gameState = useRef({
+    speed: 0.6,
+    distance: 0,
+    entities: [] as Entity[],
+    lastSpawnZ: 0,
+    isJumping: false,
+    playerLane: 0,
+    score: 0,
+    concentration: MAX_CONCENTRACION,
+    waqtIndex: 0
+  });
+
   const requestRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
-  const spawnTimerRef = useRef<number>(0);
-  const levelRewardGiven = useRef<boolean>(false);
 
-  // Constants
-  const PLAYER_SIZE = 8;
-  const ITEM_SIZE = 8;
-  const currentLevel = LEVELS[levelIdx];
-
-  // Sync State to Refs
-  useEffect(() => {
-    playerPosRef.current = playerPos;
-  }, [playerPos]);
-
-  useEffect(() => {
-    gameStateRef.current = { isPlaying, gameOver, showLevelComplete, levelIdx, iman };
-  }, [isPlaying, gameOver, showLevelComplete, levelIdx, iman]);
-
-  // Controls
+  // --- CONTROLS ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!gameStateRef.current.isPlaying || gameStateRef.current.showLevelComplete) return;
+      if (!isPlaying || gameOver) return;
 
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        setPlayerLane(prev => {
+          const newLane = Math.max(-1, prev - 1);
+          gameState.current.playerLane = newLane;
+          return newLane;
+        });
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        setPlayerLane(prev => {
+          const newLane = Math.min(1, prev + 1);
+          gameState.current.playerLane = newLane;
+          return newLane;
+        });
+      } else if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w' || e.key === 'W') {
+        if (!gameState.current.isJumping) {
+          triggerJump();
+        }
       }
-
-      const speed = 7;
-      setPlayerPos(prev => {
-        let newX = prev.x;
-        let newY = prev.y;
-        if (e.key === 'ArrowLeft') newX = Math.max(5, prev.x - speed);
-        if (e.key === 'ArrowRight') newX = Math.min(95, prev.x + speed);
-        if (e.key === 'ArrowUp') newY = Math.max(10, prev.y - speed);
-        if (e.key === 'ArrowDown') newY = Math.min(90, prev.y + speed);
-        return { x: newX, y: newY };
-      });
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isPlaying, gameOver]);
 
-  // Main Game Logic Function
-  const updateGame = useCallback((deltaTime: number) => {
-    const state = gameStateRef.current;
-    if (!state.isPlaying || state.gameOver || state.showLevelComplete) return;
+  const triggerJump = () => {
+    setIsJumping(true);
+    gameState.current.isJumping = true;
+    playJump();
+    setTimeout(() => {
+      setIsJumping(false);
+      gameState.current.isJumping = false;
+    }, 600);
+  };
 
-    const level = LEVELS[state.levelIdx];
+  // --- GAME LOOP ---
+  const startGame = () => {
+    setIsPlaying(true);
+    setGameOver(false);
+    setScore(0);
+    setConcentration(MAX_CONCENTRACION);
+    setCurrentWaqtIndex(0);
+    setPlayerLane(0);
+    setMessage(WAQT_TEMAS[0].themeName);
+    
+    gameState.current = {
+      speed: 0.7,
+      distance: 0,
+      entities: [],
+      lastSpawnZ: 0,
+      isJumping: false,
+      playerLane: 0,
+      score: 0,
+      concentration: MAX_CONCENTRACION,
+      waqtIndex: 0
+    };
 
-    // 1. Advance Distance
-    setDistance(prev => {
-      const newDist = prev + (0.03 * level.speed);
-      if (newDist >= 100) {
-        setShowLevelComplete(true);
-        if (!levelRewardGiven.current) {
-            levelRewardGiven.current = true;
-            if (addPoints) addPoints(30);
-            playLevelUp(); // Sound: Level Complete
-        }
-        return 100;
-      }
-      return newDist;
-    });
+    lastTimeRef.current = performance.now();
+    requestRef.current = requestAnimationFrame(gameLoop);
+  };
 
-    // 2. Spawn Items
-    spawnTimerRef.current += deltaTime;
-    if (spawnTimerRef.current > 1200 / level.speed) {
-      spawnTimerRef.current = 0;
-      spawnItem();
+  const spawnEntity = () => {
+    const lanes = [-1, 0, 1];
+    const lane = lanes[Math.floor(Math.random() * lanes.length)];
+    const theme = WAQT_TEMAS[gameState.current.waqtIndex];
+    
+    const rand = Math.random();
+    
+    // 20% Chance of Coin (Hasanat)
+    if (rand < 0.2) {
+         gameState.current.entities.push({
+            id: Date.now() + Math.random(),
+            lane,
+            z: 0,
+            def: { name: 'Hasanat', type: 'Coin', prob: 0, emoji: '🌟' }
+         });
+         return;
     }
 
-    // 3. Move Items & Check Collisions
-    setItems(prevItems => {
-      const nextItems: GameItem[] = [];
-      let collisionDetected = false;
-      let collisionItem: GameItem | null = null;
+    // Logic to select obstacle based on Python probability weights
+    let selectedObstacle = theme.obstacles[0];
+    const roll = Math.random(); // 0 to 1
+    let cumulativeProb = 0;
 
-      prevItems.forEach(item => {
-        const newY = item.y + (0.5 * level.speed); // Move item down
-        
-        // Collision Check using REF for player position (latest)
-        const p = playerPosRef.current;
-        const dx = Math.abs(p.x - item.x);
-        const dy = Math.abs(p.y - newY);
-
-        if (dx < (PLAYER_SIZE + ITEM_SIZE) / 1.5 && dy < (PLAYER_SIZE + ITEM_SIZE) / 1.5) {
-          collisionDetected = true;
-          collisionItem = item;
-        } else if (newY < 120) {
-           nextItems.push({ ...item, y: newY });
+    for (const obs of theme.obstacles) {
+        cumulativeProb += obs.prob;
+        if (roll <= cumulativeProb) {
+            selectedObstacle = obs;
+            break;
         }
-      });
+    }
 
-      if (collisionDetected && collisionItem) {
-          handleCollisionEffect(collisionItem);
-      }
-
-      return nextItems;
+    gameState.current.entities.push({
+      id: Date.now() + Math.random(),
+      lane,
+      z: 0,
+      def: selectedObstacle
     });
-  }, [addPoints]);
-
-  const handleCollisionEffect = (item: GameItem) => {
-      if (item.type === 'good') {
-          playCoin(); // Sound: Collect
-          setMessage(`¡Bien! ${item.label}`);
-          setIman(prev => Math.min(100, prev + 5));
-      } else {
-          playError(); // Sound: Hit bad item
-          setMessage(`¡Mal! ${item.label}`);
-          setIman(prev => {
-              const newIman = prev - 15;
-              if (newIman <= 0) {
-                  setGameOver(true);
-                  playError(); // Sound: Game Over (reusing error/buzz)
-              }
-              return newIman;
-          });
-      }
   };
 
-  const spawnItem = () => {
-    const isGood = Math.random() > 0.4;
-    const template = isGood 
-      ? GOOD_ITEMS[Math.floor(Math.random() * GOOD_ITEMS.length)]
-      : BAD_ITEMS[Math.floor(Math.random() * BAD_ITEMS.length)];
-
-    setItems(prev => [
-      ...prev,
-      {
-        id: Date.now() + Math.random(),
-        x: Math.random() * 80 + 10,
-        y: -10,
-        type: isGood ? 'good' : 'bad',
-        icon: template.icon,
-        label: template.label
-      }
-    ]);
-  };
-
-  // Game Loop
   const gameLoop = (time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time;
     const deltaTime = time - lastTimeRef.current;
     lastTimeRef.current = time;
 
-    updateGame(deltaTime);
-    requestRef.current = requestAnimationFrame(gameLoop);
-  };
+    // 1. Update Game State
+    gameState.current.speed += 0.00005 * deltaTime; // Slowly increase speed
+    gameState.current.distance += gameState.current.speed;
 
-  const startGame = () => {
-    setIsPlaying(true);
-    setGameOver(false);
-    setDistance(0);
-    setIman(100);
-    setItems([]);
-    setLevelIdx(0);
-    setPlayerPos({ x: 50, y: 80 });
-    levelRewardGiven.current = false;
-    lastTimeRef.current = null;
-    playCoin(); // Sound: Start
-    requestRef.current = requestAnimationFrame(gameLoop);
-  };
+    // WAQT PROGRESSION LOGIC (Every 500 distance units)
+    const nextWaqtThreshold = (gameState.current.waqtIndex + 1) * 500;
+    if (gameState.current.distance > nextWaqtThreshold && gameState.current.waqtIndex < WAQT_TEMAS.length - 1) {
+        gameState.current.waqtIndex++;
+        setCurrentWaqtIndex(gameState.current.waqtIndex);
+        playLevelUp();
+        // Heal a bit on level up
+        gameState.current.concentration = Math.min(MAX_CONCENTRACION, gameState.current.concentration + 20);
+        setConcentration(gameState.current.concentration);
+    }
 
-  const nextLevel = () => {
-    if (levelIdx < LEVELS.length - 1) {
-      setLevelIdx(l => l + 1);
-      setDistance(0);
-      setItems([]);
-      setIman(100);
-      setShowLevelComplete(false);
-      levelRewardGiven.current = false;
-      lastTimeRef.current = null;
-      // Loop continues automatically via ref checks
-    } else {
-      setGameOver(true); // Victory state handled in render
-      playWin(); // Sound: Victory
+    // 2. Spawn
+    if (gameState.current.distance - gameState.current.lastSpawnZ > 40) {
+      spawnEntity();
+      gameState.current.lastSpawnZ = gameState.current.distance;
+    }
+
+    // 3. Move & Collision
+    const playerZ = 90;
+    const collisionThreshold = 5;
+
+    // Move entities
+    gameState.current.entities.forEach(entity => {
+      entity.z += gameState.current.speed * (deltaTime / 10);
+    });
+
+    // Filter and check collisions
+    gameState.current.entities = gameState.current.entities.filter(entity => {
+      if (entity.z > 110) return false; // Remove if passed
+
+      const distZ = Math.abs(entity.z - playerZ);
+      const sameLane = entity.lane === gameState.current.playerLane;
+
+      if (distZ < collisionThreshold && sameLane && !entity.collected) {
+        if (entity.def.type === 'Coin') {
+          playCoin();
+          entity.collected = true;
+          gameState.current.score += 10;
+          setScore(gameState.current.score);
+          gameState.current.concentration = Math.min(MAX_CONCENTRACION, gameState.current.concentration + 5);
+          setConcentration(gameState.current.concentration);
+          return false; // Remove coin
+        } else {
+            // OBSTACLE HIT
+            let avoided = false;
+
+            // 'Salto' type can be jumped over
+            if (entity.def.type === 'Salto' && gameState.current.isJumping) {
+                avoided = true;
+            }
+
+            if (!avoided) {
+                playError();
+                entity.collected = true; 
+                
+                // Reduce Concentration
+                const damage = 25;
+                gameState.current.concentration -= damage;
+                setConcentration(gameState.current.concentration);
+
+                // Check Game Over
+                if (gameState.current.concentration <= 0) {
+                    handleGameOver(`¡Te distrajiste con: ${entity.def.name}!`);
+                    return false;
+                }
+                return true; // Keep visible but collected
+            }
+        }
+      }
+      return true;
+    });
+
+    // 4. Force Render
+    setTick(t => t + 1);
+
+    if (!gameOver) {
+      requestRef.current = requestAnimationFrame(gameLoop);
     }
   };
 
-  useEffect(() => {
-    return () => {
+  const handleGameOver = (msg: string) => {
+      setGameOver(true);
+      setIsPlaying(false);
+      setMessage(msg);
+      if (gameState.current.score > highScore) setHighScore(gameState.current.score);
+      if (addPoints) addPoints(Math.floor(gameState.current.score / 10));
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
+  };
+
+  // --- RENDER HELPERS ---
+  const getPerspectiveStyle = (entity: Entity) => {
+    const scale = 0.2 + (entity.z / 100) * 1.0;
+    const top = 40 + (entity.z * 0.55); 
+    const spread = 20 * (scale); 
+    const left = 50 + (entity.lane * spread);
+
+    return {
+      top: `${top}%`,
+      left: `${left}%`,
+      transform: `translate(-50%, -50%) scale(${scale})`,
+      zIndex: Math.floor(entity.z)
     };
-  }, []);
-
-  // --- RENDER ---
-
-  if (gameOver) {
-    const isVictory = distance >= 100 && levelIdx === LEVELS.length - 1;
-    return (
-      <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-fade-in">
-        <div className={`bg-white max-w-md w-full p-8 rounded-3xl text-center border-4 ${isVictory ? 'border-green-500' : 'border-red-500'}`}>
-          <div className="text-8xl mb-4">{isVictory ? '🕌' : '😢'}</div>
-          <h1 className="text-4xl font-bold mb-2">{isVictory ? '¡Llegaste a la Mezquita!' : '¡Juego Terminado!'}</h1>
-          <p className="text-xl text-gray-600 mb-8">
-            {isVictory 
-              ? 'Has completado el camino con éxito. ¡Allah acepte tu esfuerzo!' 
-              : 'Te has quedado sin Iman. Inténtalo de nuevo.'}
-          </p>
-          <div className="flex gap-4 justify-center">
-            <button onClick={startGame} className="bg-yellow-400 px-6 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform">Jugar de Nuevo</button>
-            <button onClick={onExit} className="bg-gray-300 px-6 py-3 rounded-full font-bold hover:bg-gray-400 transition-colors">Salir</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  };
 
   return (
-    <div className={`fixed inset-0 z-50 overflow-hidden bg-gradient-to-b ${currentLevel.bgGradient} flex flex-col items-center justify-center`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 font-sans select-none">
       
-      {/* HUD */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-20 text-white bg-black/20 backdrop-blur-sm">
-        <div>
-          <h2 className="font-bold text-lg md:text-2xl drop-shadow-md">{currentLevel.title}</h2>
-          <div className="flex items-center gap-2 mt-2">
-             <div className="w-32 md:w-48 h-4 bg-gray-700 rounded-full overflow-hidden border border-white/30">
-                <div className="h-full bg-green-400 transition-all duration-300" style={{ width: `${distance}%` }}></div>
-             </div>
-             <span className="text-xs md:text-sm font-bold">Meta 🕌</span>
-          </div>
-        </div>
+      {/* GAME CONTAINER */}
+      <div className="relative w-full max-w-lg h-full md:h-[90vh] md:rounded-3xl overflow-hidden bg-gray-800 shadow-2xl border-4 border-white/20">
         
-        <div className="flex flex-col items-end">
-            <div className="flex items-center gap-2 text-xl md:text-2xl font-bold drop-shadow-md">
-                <Heart className={`fill-red-500 text-red-500 ${iman < 30 ? 'animate-pulse' : ''}`} /> {iman}%
-            </div>
-            <div className="text-yellow-300 text-sm md:text-lg font-bold mt-1 shadow-black drop-shadow-md text-right max-w-[200px]">
-                {message}
-            </div>
+        {/* DYNAMIC SKY */}
+        <div className={`absolute top-0 w-full h-[40%] bg-gradient-to-b ${currentTheme.skyClass} transition-colors duration-1000`}>
+             <div className="absolute bottom-10 left-10 text-6xl opacity-30 animate-pulse">{currentTheme.atmosphereEmoji}</div>
+             <div className="absolute top-10 right-10 text-6xl opacity-30 animate-pulse delay-700">{currentTheme.atmosphereEmoji}</div>
         </div>
-      </div>
 
-      {/* START SCREEN */}
-      {!isPlaying && !gameOver && !showLevelComplete && (
-        <div className="absolute inset-0 z-30 bg-black/60 flex items-center justify-center p-4">
-            <div className="bg-white p-6 md:p-8 rounded-3xl text-center max-w-sm w-full border-4 border-blue-400 animate-bounce-in shadow-2xl">
-                <h1 className="text-3xl font-bold text-blue-600 mb-4">Camino a la Mezquita</h1>
-                <div className="space-y-3 text-left bg-gray-100 p-4 rounded-xl mb-6 text-sm">
-                    <p className="flex items-center gap-2">🕹️ <strong>Usa las Flechas</strong> para moverte.</p>
-                    <p className="flex items-center gap-2">✅ Recoge cosas <strong>Buenas</strong> (+Iman).</p>
-                    <p className="flex items-center gap-2">❌ Evita cosas <strong>Malas</strong> (-Iman).</p>
-                    <p className="flex items-center gap-2">🕌 ¡Llega a la <strong>Mezquita</strong>!</p>
-                </div>
-                <button 
-                    onClick={startGame}
-                    className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-xl transition-all hover:scale-105"
-                >
-                    <Play fill="white"/> ¡Correr!
-                </button>
-                <button onClick={onExit} className="mt-4 text-gray-400 hover:text-gray-600 underline text-sm">Volver al menú</button>
-            </div>
+        {/* HORIZON */}
+        <div className="absolute top-[35%] left-1/2 -translate-x-1/2 text-8xl z-0 opacity-80 filter drop-shadow-lg">
+            🕌
         </div>
-      )}
 
-      {/* LEVEL COMPLETE */}
-      {showLevelComplete && (
-          <div className="absolute inset-0 z-30 bg-black/70 flex items-center justify-center p-4">
-              <div className="bg-white p-8 rounded-3xl text-center border-4 border-yellow-400 animate-fade-in shadow-2xl">
-                  <div className="text-6xl mb-4">⭐</div>
-                  <h2 className="text-3xl font-bold text-green-600 mb-2">¡Nivel Superado!</h2>
-                  <p className="mb-6 text-gray-600 font-medium">Has avanzado un paso más hacia Allah.</p>
-                  <button onClick={nextLevel} className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-bold text-lg shadow-lg hover:scale-105 transition-transform">
-                      Siguiente Nivel ➡️
-                  </button>
-              </div>
-          </div>
-      )}
+        {/* DYNAMIC GROUND */}
+        <div className={`absolute top-[40%] w-full h-[60%] ${currentTheme.floorClass} overflow-hidden transition-colors duration-1000`}>
+             {/* ROAD */}
+             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gray-800/80" 
+                  style={{ clipPath: 'polygon(45% 0, 55% 0, 100% 100%, 0% 100%)' }}>
+                 <div className="absolute top-0 left-[33%] w-1 h-full bg-dashed-line opacity-30"></div>
+                 <div className="absolute top-0 right-[33%] w-1 h-full bg-dashed-line opacity-30"></div>
+             </div>
+        </div>
 
-      {/* GAME AREA */}
-      <div className="relative w-full max-w-2xl h-full bg-gray-800/50 border-x-8 border-white/10 overflow-hidden shadow-2xl">
-          {/* Road Animation */}
-          <div className="absolute inset-0 flex justify-center opacity-30 pointer-events-none">
-              <div className="w-2 h-full bg-dashed-line animate-road-scroll"></div> 
-              <div className="w-2 h-full bg-dashed-line animate-road-scroll ml-24"></div> 
-              <div className="w-2 h-full bg-dashed-line animate-road-scroll -ml-24"></div> 
-          </div>
-
-          {/* Items */}
-          {items.map(item => (
-              <div 
-                key={item.id}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center transition-transform"
-                style={{ 
-                    left: `${item.x}%`, 
-                    top: `${item.y}%`,
-                    width: `${ITEM_SIZE}%`,
-                    height: `${ITEM_SIZE}%`
-                }}
-              >
-                  <span className="text-4xl drop-shadow-md filter">{item.icon}</span>
-              </div>
-          ))}
-
-          {/* Player */}
-          <div 
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-75 ease-linear"
-            style={{ 
-                left: `${playerPos.x}%`, 
-                top: `${playerPos.y}%` 
-            }}
+        {/* ENTITIES */}
+        {gameState.current.entities.map(entity => (
+          <div
+            key={entity.id}
+            className={`absolute transition-transform duration-75 ease-linear flex flex-col items-center justify-end ${entity.collected && entity.def.type !== 'Coin' ? 'opacity-50 grayscale' : ''}`}
+            style={getPerspectiveStyle(entity)}
           >
-              <div className="text-6xl filter drop-shadow-2xl relative z-10">🏃🏽</div>
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-3 bg-black/40 rounded-full blur-md"></div>
+             {entity.def.type === 'Coin' ? (
+                 <span className="text-4xl filter drop-shadow-[0_0_10px_gold] animate-spin">🌟</span>
+             ) : (
+                 <>
+                    <span className="text-6xl filter drop-shadow-2xl">{entity.def.emoji}</span>
+                    <span className="text-xs bg-black/50 text-white px-1 rounded whitespace-nowrap mt-1">{entity.def.name}</span>
+                 </>
+             )}
           </div>
-      </div>
+        ))}
 
-      {/* Mobile Controls Overlay */}
-      <div className="absolute bottom-6 inset-x-0 flex justify-between px-8 md:hidden z-40 pointer-events-none">
-           <button 
-             className="pointer-events-auto bg-white/20 backdrop-blur-md p-6 rounded-full active:bg-white/40 border border-white/30 shadow-lg"
-             onTouchStart={(e) => { e.preventDefault(); setPlayerPos(p => ({...p, x: Math.max(5, p.x - 10)})); }}
-             onClick={() => setPlayerPos(p => ({...p, x: Math.max(5, p.x - 10)}))}
-           >
-               <ArrowLeft className="text-white w-8 h-8" />
-           </button>
-           <button 
-             className="pointer-events-auto bg-white/20 backdrop-blur-md p-6 rounded-full active:bg-white/40 border border-white/30 shadow-lg"
-             onTouchStart={(e) => { e.preventDefault(); setPlayerPos(p => ({...p, x: Math.min(95, p.x + 10)})); }}
-             onClick={() => setPlayerPos(p => ({...p, x: Math.min(95, p.x + 10)}))}
-           >
-               <ArrowRight className="text-white w-8 h-8" />
-           </button>
-      </div>
+        {/* PLAYER */}
+        <div 
+           className={`absolute transition-all duration-100 ease-out z-50 flex flex-col items-center justify-end
+             ${isJumping ? 'scale-110 -translate-y-16' : 'scale-100'}
+           `}
+           style={{
+             top: '85%',
+             left: `${50 + (playerLane * 25)}%`,
+             transform: 'translate(-50%, -50%)',
+             width: '80px',
+             height: '80px'
+           }}
+        >
+           {/* Visual Feedback for low concentration */}
+           <div className="text-7xl filter drop-shadow-2xl relative">
+              🏃🏽
+              {concentration < 30 && <span className="absolute -top-4 left-0 text-2xl animate-ping">⚠️</span>}
+           </div>
+           <div className={`w-12 h-3 bg-black/30 rounded-full blur-sm transition-all ${isJumping ? 'scale-50 opacity-20 translate-y-12' : ''}`}></div>
+        </div>
 
+        {/* HUD */}
+        <div className="absolute top-0 w-full p-4 z-50 flex flex-col gap-2">
+            <div className="flex justify-between items-start text-white font-bold drop-shadow-md">
+                {/* Score */}
+                <div className="bg-black/40 px-4 py-2 rounded-full flex items-center gap-2 border border-white/20">
+                    <Trophy className="text-yellow-400" size={20} /> {score}
+                </div>
+                
+                {/* Current Waqt */}
+                <div className="flex flex-col items-end">
+                    <div className="text-xl">{currentTheme.id}</div>
+                    <div className="text-xs opacity-80">{currentTheme.themeName}</div>
+                </div>
+            </div>
+
+            {/* Concentration Bar */}
+            <div className="w-full max-w-xs mx-auto">
+                <div className="flex justify-between text-white text-xs mb-1 font-bold">
+                    <span>Concentración (Khushu)</span>
+                    <span className={concentration < 30 ? 'text-red-400 animate-pulse' : 'text-green-400'}>{Math.round(concentration)}%</span>
+                </div>
+                <div className="h-4 bg-gray-700 rounded-full border border-gray-500 overflow-hidden relative">
+                    <div 
+                        className={`h-full transition-all duration-300 ${concentration < 30 ? 'bg-red-500' : 'bg-green-500'}`}
+                        style={{ width: `${concentration}%` }}
+                    ></div>
+                </div>
+            </div>
+        </div>
+
+        {/* OVERLAYS */}
+        {!isPlaying && !gameOver && (
+           <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white z-50 p-6 text-center animate-fade-in">
+              <h1 className="text-3xl font-bold text-yellow-300 mb-2">Camino a la Mezquita</h1>
+              <p className="mb-6 opacity-80">Evita las distracciones de cada oración.</p>
+              
+              <div className="grid grid-cols-2 gap-4 mb-8 text-left bg-white/10 p-4 rounded-xl text-sm">
+                 <div className="flex items-center gap-2"><span className="text-xl">🛏️</span> <b>Salto:</b> Saltar</div>
+                 <div className="flex items-center gap-2"><span className="text-xl">🛌</span> <b>Deslizarse:</b> Esquivar</div>
+                 <div className="flex items-center gap-2"><span className="text-xl">🚗</span> <b>Desvío:</b> Esquivar</div>
+                 <div className="flex items-center gap-2"><span className="text-xl">👻</span> <b>Susurro:</b> Esquivar</div>
+              </div>
+
+              <button onClick={startGame} className="bg-green-600 hover:bg-green-700 text-white text-xl font-bold py-3 px-10 rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2">
+                 <RefreshCw /> ¡Empezar el Día!
+              </button>
+           </div>
+        )}
+
+        {gameOver && (
+           <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center text-white z-50 p-6 text-center animate-bounce-in">
+              <div className="text-6xl mb-4">💔</div>
+              <h2 className="text-2xl font-bold text-red-400 mb-2">{message}</h2>
+              <p className="text-lg mb-6">Perdiste tu concentración.</p>
+              <p className="text-xl mb-6">Puntuación: <span className="text-yellow-300 font-bold">{score}</span></p>
+              
+              <button onClick={startGame} className="bg-yellow-500 hover:bg-yellow-600 text-black text-xl font-bold py-3 px-8 rounded-full shadow-lg mb-4 w-full max-w-xs">
+                 Reintentar
+              </button>
+              <button onClick={onExit} className="text-gray-400 hover:text-white underline">
+                 Volver al Menú
+              </button>
+           </div>
+        )}
+
+        {/* MOBILE CONTROLS */}
+        <div className="absolute bottom-4 w-full px-4 flex justify-between md:hidden z-40 pointer-events-none">
+            <button 
+                className="pointer-events-auto w-20 h-20 bg-white/20 backdrop-blur rounded-full border border-white/40 flex items-center justify-center active:bg-white/40"
+                onTouchStart={(e) => { e.preventDefault(); setPlayerLane(l => Math.max(-1, l - 1)); }}
+            >
+                ⬅️
+            </button>
+            <button 
+                className="pointer-events-auto w-20 h-20 bg-green-500/50 backdrop-blur rounded-full border border-green-300/40 flex items-center justify-center active:bg-green-500/70"
+                onTouchStart={(e) => { e.preventDefault(); if(!isJumping) triggerJump(); }}
+            >
+                ⬆️
+            </button>
+            <button 
+                className="pointer-events-auto w-20 h-20 bg-white/20 backdrop-blur rounded-full border border-white/40 flex items-center justify-center active:bg-white/40"
+                onTouchStart={(e) => { e.preventDefault(); setPlayerLane(l => Math.min(1, l + 1)); }}
+            >
+                ➡️
+            </button>
+        </div>
+      </div>
+      
       <style>{`
         .bg-dashed-line {
-            background-image: linear-gradient(to bottom, white 50%, transparent 50%);
-            background-size: 100% 120px;
-        }
-        @keyframes scroll {
-            from { background-position: 0 0; }
-            to { background-position: 0 120px; }
-        }
-        .animate-road-scroll {
-            animation: scroll 0.4s linear infinite;
+            background-image: linear-gradient(to bottom, transparent 50%, white 50%);
+            background-size: 100% 40px;
         }
       `}</style>
-
     </div>
   );
 };

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { generateStory } from '../services/geminiService';
-import { Book, Loader2 } from 'lucide-react';
+import { Book, Loader2, Volume2, Pause, Square, Play } from 'lucide-react';
 
 const PROPHETS = [
   "Adam", "Idris", "Nuh", "Hud", "Saleh", "Ibrahim", "Ismail", "Ishaq",
@@ -22,8 +23,91 @@ export const SectionStories: React.FC<SectionStoriesProps> = ({ addPoints }) => 
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [storyContent, setStoryContent] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  
+  // Audio State
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    // Initialize synth
+    if (typeof window !== 'undefined') {
+      synthRef.current = window.speechSynthesis;
+    }
+    
+    // Cleanup on unmount or topic change
+    return () => {
+      stopAudio();
+    };
+  }, [selectedTopic]);
+
+  const stopAudio = () => {
+    if (synthRef.current) {
+      synthRef.current.cancel();
+    }
+    setIsSpeaking(false);
+    setIsPaused(false);
+  };
+
+  const handlePlayPause = () => {
+    if (!synthRef.current) return;
+
+    if (isSpeaking && !isPaused) {
+      // Pause
+      synthRef.current.pause();
+      setIsPaused(true);
+    } else if (isPaused) {
+      // Resume
+      synthRef.current.resume();
+      setIsPaused(false);
+    } else {
+      // Start fresh - CANCELAR CUALQUIER AUDIO PREVIO PRIMERO
+      synthRef.current.cancel();
+
+      const u = new SpeechSynthesisUtterance(storyContent);
+      u.lang = 'es-ES'; // Default fallback lang
+      u.rate = 0.9; // Ritmo narrativo calmado
+      u.pitch = 1.0; // Tono natural (1.0 es lo más humano, 1.1 o más suena robótico/infantil)
+      u.volume = 1.0;
+
+      // Obtener voces disponibles
+      const voices = synthRef.current.getVoices();
+      
+      // Lógica de selección de voz para máxima naturalidad:
+      // 1. Google Español (Alta calidad en Android/Chrome)
+      // 2. Microsoft Español (Voces Neurales en Edge/Windows)
+      // 3. Cualquier voz en español
+      let preferredVoice = 
+        voices.find(v => v.name.includes("Google") && v.lang.includes("es")) || 
+        voices.find(v => v.name.includes("Microsoft") && v.lang.includes("es")) || 
+        voices.find(v => v.lang.includes("es-MX")) || // Español latino suele ser suave
+        voices.find(v => v.lang.includes("es"));
+
+      if (preferredVoice) {
+        u.voice = preferredVoice;
+        console.log("Voz seleccionada:", preferredVoice.name);
+      }
+
+      u.onend = () => {
+        setIsSpeaking(false);
+        setIsPaused(false);
+      };
+
+      u.onerror = (e) => {
+        console.error("Error TTS:", e);
+        setIsSpeaking(false);
+        setIsPaused(false);
+      };
+
+      utteranceRef.current = u;
+      synthRef.current.speak(u);
+      setIsSpeaking(true);
+    }
+  };
 
   const handleSelectTopic = async (topic: string) => {
+    stopAudio(); // Stop any previous audio
     setSelectedTopic(topic);
     setLoading(true);
     setStoryContent("");
@@ -84,15 +168,48 @@ export const SectionStories: React.FC<SectionStoriesProps> = ({ addPoints }) => 
         </div>
       ) : (
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-4xl mx-auto border-4 border-orange-100">
-          <div className="bg-orange-100 p-4 flex justify-between items-center border-b border-orange-200">
+          <div className="bg-orange-100 p-4 flex justify-between items-center border-b border-orange-200 sticky top-24 z-20">
             <button 
-              onClick={() => setSelectedTopic(null)}
+              onClick={() => {
+                  stopAudio();
+                  setSelectedTopic(null);
+              }}
               className="text-orange-600 font-bold hover:underline"
             >
               ← Volver
             </button>
-            <h2 className="font-bold text-xl text-orange-800">{selectedTopic}</h2>
-            <div className="w-10"></div>
+            <h2 className="font-bold text-xl text-orange-800 truncate px-2">{selectedTopic}</h2>
+            
+            {/* Audio Controls */}
+            {!loading && storyContent && (
+               <div className="flex items-center gap-2">
+                   {isSpeaking && !isPaused && (
+                       <div className="flex gap-1 mr-2 h-4 items-end">
+                           <div className="w-1 bg-orange-500 animate-[bounce_1s_infinite] h-full"></div>
+                           <div className="w-1 bg-orange-500 animate-[bounce_1.2s_infinite] h-2/3"></div>
+                           <div className="w-1 bg-orange-500 animate-[bounce_0.8s_infinite] h-full"></div>
+                       </div>
+                   )}
+                   
+                   <button 
+                      onClick={handlePlayPause}
+                      className="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full transition-transform active:scale-95 shadow-md"
+                      title={isSpeaking && !isPaused ? "Pausar" : "Escuchar Cuento"}
+                   >
+                      {isSpeaking && !isPaused ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" />}
+                   </button>
+                   
+                   {isSpeaking && (
+                       <button 
+                          onClick={stopAudio}
+                          className="bg-red-400 hover:bg-red-500 text-white p-2 rounded-full transition-transform active:scale-95 shadow-md"
+                          title="Detener"
+                       >
+                          <Square size={16} fill="white" />
+                       </button>
+                   )}
+               </div>
+            )}
           </div>
           
           <div className="p-8 min-h-[400px]">

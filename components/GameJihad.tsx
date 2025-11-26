@@ -42,6 +42,8 @@ export const GameJihad: React.FC<GameProps> = ({ onExit, addPoints }) => {
 
     const requestRef = useRef<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const playerRef = useRef<HTMLDivElement>(null);
+    const enemyRef = useRef<HTMLDivElement>(null);
 
     // --- INITIALIZATION ---
     useEffect(() => {
@@ -93,7 +95,6 @@ export const GameJihad: React.FC<GameProps> = ({ onExit, addPoints }) => {
     // --- GAME LOOP ---
     const gameLoop = (time: number) => {
         if (!gameState.current.lastTime) gameState.current.lastTime = time;
-        // const deltaTime = time - gameState.current.lastTime; // Can be used for smoother delta time movement
         gameState.current.lastTime = time;
 
         if (!gameOver && !gameWon) {
@@ -305,22 +306,14 @@ export const GameJihad: React.FC<GameProps> = ({ onExit, addPoints }) => {
     // --- DOM UPDATER (Avoids React Render Cycle for 60fps) ---
     const updateDOM = () => {
         const state = gameState.current;
-        if (!containerRef.current) return;
-
-        const playerEl = document.getElementById('player-sprite');
-        const enemyEl = document.getElementById('enemy-sprite');
-
-        if (playerEl) {
-            playerEl.style.transform = `translate(${state.player.x}px, ${state.player.y}px) scaleX(${state.player.facing})`;
-            // Update animation class based on action is handled by React partly, but we can toggle classes here for purity if needed
-            // For now, we rely on the action state variable which might lag slightly in UI render vs physics, 
-            // but for this simple game, we can pass action via style or ref.
-            // Let's rely on React re-rendering action prop for sprite change or use data attributes.
-            playerEl.dataset.action = state.player.action;
+        
+        if (playerRef.current) {
+            playerRef.current.style.transform = `translate(${state.player.x}px, ${state.player.y}px) scaleX(${state.player.facing})`;
+            playerRef.current.dataset.action = state.player.action;
         }
-        if (enemyEl) {
-            enemyEl.style.transform = `translate(${state.enemy.x}px, ${state.enemy.y}px) scaleX(${state.enemy.facing})`;
-            enemyEl.dataset.action = state.enemy.action;
+        if (enemyRef.current) {
+            enemyRef.current.style.transform = `translate(${state.enemy.x}px, ${state.enemy.y}px) scaleX(${state.enemy.facing})`;
+            enemyRef.current.dataset.action = state.enemy.action;
         }
     };
 
@@ -392,7 +385,7 @@ export const GameJihad: React.FC<GameProps> = ({ onExit, addPoints }) => {
                 
                 {/* Player Sprite */}
                 <div 
-                    id="player-sprite"
+                    ref={playerRef}
                     className="absolute w-16 h-24 flex flex-col items-center justify-end transition-transform duration-75 z-10"
                     style={{ left: 0, top: 0, width: 80, height: 100 }} // Base dimensions
                 >
@@ -411,7 +404,7 @@ export const GameJihad: React.FC<GameProps> = ({ onExit, addPoints }) => {
 
                 {/* Enemy Sprite */}
                 <div 
-                    id="enemy-sprite"
+                    ref={enemyRef}
                     className="absolute flex flex-col items-center justify-end transition-transform duration-75 z-10"
                     style={{ left: 0, top: 0, width: 80, height: 100 }}
                 >

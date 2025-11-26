@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { playSuccess, playError, playLevelUp, playCoin, playWin } from '../services/audioService';
-import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Pause, Play, RefreshCw } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RefreshCw } from 'lucide-react';
 
 // --- CONFIGURACIÓN DEL JUEGO ---
 
@@ -30,6 +30,8 @@ const MAZE_MAP = [
 const HALAL_FOODS = ['🍎', '🍉', '🍇', '🍗', '🥛', '🥒', '🥥', '🥭'];
 const HARAM_GHOSTS = ['🐷', '🍷', '🍺', '🥓', '🦂'];
 
+type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
+
 interface Entity {
     id: number;
     x: number;
@@ -46,7 +48,8 @@ interface GameProps {
 export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
     // --- ESTADO ---
     const [playerPos, setPlayerPos] = useState({ x: 1, y: 1 });
-    const [direction, setDirection] = useState<'UP' | 'DOWN' | 'LEFT' | 'RIGHT'>('RIGHT');
+    const [direction, setDirection] = useState<Direction>('RIGHT'); // Visual Direction
+    const [nextDirection, setNextDirection] = useState<Direction>('RIGHT'); // Input Buffer
     const [score, setScore] = useState(0);
     const [level, setLevel] = useState(1);
     const [items, setItems] = useState<Entity[]>([]);
@@ -60,6 +63,7 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
     // Refs for Game Loop (Prevents stale closures and loop resets)
     const playerPosRef = useRef(playerPos);
     const directionRef = useRef(direction);
+    const nextDirectionRef = useRef(nextDirection);
     const itemsRef = useRef(items);
     const enemiesRef = useRef(enemies);
     const powerUpActiveRef = useRef(powerUpActive);
@@ -73,12 +77,13 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
     useEffect(() => {
         playerPosRef.current = playerPos;
         directionRef.current = direction;
+        nextDirectionRef.current = nextDirection;
         itemsRef.current = items;
         enemiesRef.current = enemies;
         powerUpActiveRef.current = powerUpActive;
         gameOverRef.current = gameOver;
         gameWonRef.current = gameWon;
-    }, [playerPos, direction, items, enemies, powerUpActive, gameOver, gameWon]);
+    }, [playerPos, direction, nextDirection, items, enemies, powerUpActive, gameOver, gameWon]);
 
     // --- INICIALIZACIÓN ---
 
@@ -90,29 +95,31 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
     // --- CONTROLES DE TECLADO GLOBAL ---
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (gameOver || gameWon) return;
+            if (gameOverRef.current || gameWonRef.current) return;
 
             const keysToPrevent = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '];
             if (keysToPrevent.includes(e.key)) {
                 e.preventDefault();
             }
 
-            if (['ArrowUp', 'w', 'W'].includes(e.key)) setDirection('UP');
-            else if (['ArrowDown', 's', 'S'].includes(e.key)) setDirection('DOWN');
-            else if (['ArrowLeft', 'a', 'A'].includes(e.key)) setDirection('LEFT');
-            else if (['ArrowRight', 'd', 'D'].includes(e.key)) setDirection('RIGHT');
+            // Input buffering: Set the NEXT desired direction
+            if (['ArrowUp', 'w', 'W'].includes(e.key)) setNextDirection('UP');
+            else if (['ArrowDown', 's', 'S'].includes(e.key)) setNextDirection('DOWN');
+            else if (['ArrowLeft', 'a', 'A'].includes(e.key)) setNextDirection('LEFT');
+            else if (['ArrowRight', 'd', 'D'].includes(e.key)) setNextDirection('RIGHT');
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [gameOver, gameWon]);
+    }, []);
 
     const startLevel = (lvl: number) => {
         setLevel(lvl);
         setPlayerPos({ x: 1, y: 1 });
         setDirection('RIGHT');
+        setNextDirection('RIGHT');
         setGameOver(false);
         setPowerUpActive(false);
         
@@ -139,7 +146,6 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
 
         // Spawn Enemies (Haram Ghosts)
         const newEnemies: Entity[] = [];
-        // INCREASED ENEMY COUNT: Base 3 + difficulty
         const enemyCount = 3 + Math.floor(lvl / 2);
         for (let i = 0; i < enemyCount; i++) {
              let ex = GRID_SIZE - 2 - Math.floor(Math.random() * 4);
@@ -156,7 +162,6 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
         }
         setEnemies(newEnemies);
         setIsPaused(false);
-        // We call startGameLoop via the useEffect dependency on isPaused/level
     };
 
     const getRandomEmptyPos = (currentItems: Entity[]) => {
@@ -186,7 +191,7 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
         tickRef.current = window.setInterval(() => {
             if (isPaused || gameOverRef.current || gameWonRef.current) return;
             movePlayer();
-        }, 300);
+        }, 300); // Speed of player
 
         // Enemy Movement Tick
         ghostTickRef.current = window.setInterval(() => {
@@ -195,8 +200,6 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
         }, 500 - (level * 30));
     };
 
-    // Only restart loops if pause state, game over state or level (speed) changes.
-    // We removed playerPos, direction, items, etc from dependencies to prevent stuttering.
     useEffect(() => {
         if (isPaused || gameOver || gameWon) {
             stopGameLoop();
@@ -212,28 +215,54 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
         return x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE && MAZE_MAP[y][x] === 0;
     };
 
+    const getDelta = (dir: Direction) => {
+        if (dir === 'UP') return { dx: 0, dy: -1 };
+        if (dir === 'DOWN') return { dx: 0, dy: 1 };
+        if (dir === 'LEFT') return { dx: -1, dy: 0 };
+        if (dir === 'RIGHT') return { dx: 1, dy: 0 };
+        return { dx: 0, dy: 0 };
+    };
+
     const movePlayer = () => {
-        // USE REF for latest state inside interval
         let { x, y } = playerPosRef.current;
-        let dir = directionRef.current;
-        let nextX = x;
-        let nextY = y;
+        const currentDir = directionRef.current;
+        const nextDir = nextDirectionRef.current;
 
-        if (dir === 'UP') nextY--;
-        if (dir === 'DOWN') nextY++;
-        if (dir === 'LEFT') nextX--;
-        if (dir === 'RIGHT') nextX++;
+        let finalDir = currentDir;
+        let moved = false;
 
-        if (isValidMove(nextX, nextY)) {
-            setPlayerPos({ x: nextX, y: nextY });
-            checkCollisions(nextX, nextY);
+        // 1. Try to Move in Requested Direction (Buffered Input)
+        if (nextDir !== currentDir) {
+            const { dx, dy } = getDelta(nextDir);
+            if (isValidMove(x + dx, y + dy)) {
+                finalDir = nextDir;
+                setDirection(finalDir); // Update visual state
+                x += dx;
+                y += dy;
+                moved = true;
+            }
+        }
+
+        // 2. If failed to turn (or didn't request turn), try Current Direction
+        if (!moved) {
+            const { dx, dy } = getDelta(currentDir);
+            if (isValidMove(x + dx, y + dy)) {
+                x += dx;
+                y += dy;
+                moved = true;
+            }
+            // If we can't move in current direction either, we just stop (wait for valid input)
+        }
+
+        if (moved) {
+            setPlayerPos({ x, y });
+            checkCollisions(x, y);
         }
     };
 
     const moveGhosts = () => {
         if (powerUpActiveRef.current) return;
 
-        // Use REF for current enemies to calculate next positions
         const currentEnemies = enemiesRef.current;
         const pPos = playerPosRef.current;
 
@@ -287,7 +316,6 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
                 const newItems = [...currentItems];
                 newItems.splice(itemIndex, 1);
                 setItems(newItems);
-                // Important: Update ref manually for next immediate tick check if needed
                 itemsRef.current = newItems; 
                 
                 // Check Level Win
@@ -372,7 +400,6 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
                                     ${cell === 1 ? 'bg-blue-900 border border-blue-800 rounded-sm shadow-[inset_0_0_5px_rgba(0,0,0,0.5)]' : 'bg-transparent'}
                                 `}
                             >
-                                {/* DOTS (Visual decoration for path, optional) */}
                                 {cell === 0 && (
                                     <div className="w-1 h-1 bg-gray-800 rounded-full mx-auto mt-3 opacity-20"></div>
                                 )}
@@ -428,7 +455,7 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
                         transform: `rotate(${direction === 'RIGHT' ? 0 : direction === 'DOWN' ? 90 : direction === 'LEFT' ? 180 : -90}deg)`
                     }}
                 >
-                    {/* Pacman Mouth Logic using clip-path or simple border */}
+                    {/* Pacman Mouth Logic using clip-path */}
                     <div className="absolute right-0 top-1/2 -mt-[20%] w-[50%] h-[40%] bg-black clip-triangle animate-chomp"></div>
                 </div>
 
@@ -464,37 +491,37 @@ export const GameHalalHaram: React.FC<GameProps> = ({ onExit, addPoints }) => {
                 <div></div>
                 <button 
                     className={`bg-gray-800 p-4 rounded-xl border border-gray-600 active:bg-blue-600 ${direction === 'UP' ? 'bg-blue-800' : ''}`}
-                    onTouchStart={(e) => {e.preventDefault(); setDirection('UP')}}
-                    onClick={() => setDirection('UP')}
+                    onTouchStart={(e) => {e.preventDefault(); setNextDirection('UP')}}
+                    onClick={() => setNextDirection('UP')}
                 >
                     <ArrowUp className="text-white" />
                 </button>
                 <div></div>
                 <button 
                     className={`bg-gray-800 p-4 rounded-xl border border-gray-600 active:bg-blue-600 ${direction === 'LEFT' ? 'bg-blue-800' : ''}`}
-                    onTouchStart={(e) => {e.preventDefault(); setDirection('LEFT')}}
-                    onClick={() => setDirection('LEFT')}
+                    onTouchStart={(e) => {e.preventDefault(); setNextDirection('LEFT')}}
+                    onClick={() => setNextDirection('LEFT')}
                 >
                     <ArrowLeft className="text-white" />
                 </button>
                 <button 
                     className={`bg-gray-800 p-4 rounded-xl border border-gray-600 active:bg-blue-600 ${direction === 'DOWN' ? 'bg-blue-800' : ''}`}
-                    onTouchStart={(e) => {e.preventDefault(); setDirection('DOWN')}}
-                    onClick={() => setDirection('DOWN')}
+                    onTouchStart={(e) => {e.preventDefault(); setNextDirection('DOWN')}}
+                    onClick={() => setNextDirection('DOWN')}
                 >
                     <ArrowDown className="text-white" />
                 </button>
                 <button 
                     className={`bg-gray-800 p-4 rounded-xl border border-gray-600 active:bg-blue-600 ${direction === 'RIGHT' ? 'bg-blue-800' : ''}`}
-                    onTouchStart={(e) => {e.preventDefault(); setDirection('RIGHT')}}
-                    onClick={() => setDirection('RIGHT')}
+                    onTouchStart={(e) => {e.preventDefault(); setNextDirection('RIGHT')}}
+                    onClick={() => setNextDirection('RIGHT')}
                 >
                     <ArrowRight className="text-white" />
                 </button>
             </div>
             
             <div className="hidden md:block mt-4 text-gray-500 text-sm">
-                Usa las ⬆️ ⬇️ ⬅️ ➡️ para moverte
+                Usa ⬆️⬇️⬅️➡️ o WASD para moverte.
             </div>
 
             <style>{`
