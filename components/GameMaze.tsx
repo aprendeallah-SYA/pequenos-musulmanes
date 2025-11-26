@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RefreshCw, Home, Star } from 'lucide-react';
+import { playError, playWin, playLevelUp } from '../services/audioService';
 
 // 0: Camino, 1: Muro, 2: Jugador (Inicio), 3: Meta
 const LEVELS = [
@@ -186,10 +188,16 @@ export const GameMaze: React.FC<GameProps> = ({ onExit, addPoints }) => {
     const grid = levelData.grid;
 
     // Check bounds
-    if (newY < 0 || newY >= grid.length || newX < 0 || newX >= grid[0].length) return;
+    if (newY < 0 || newY >= grid.length || newX < 0 || newX >= grid[0].length) {
+        playError();
+        return;
+    }
 
     // Check Wall (1)
-    if (grid[newY][newX] === 1) return;
+    if (grid[newY][newX] === 1) {
+        playError();
+        return;
+    }
 
     // Move
     setPlayerPos({ x: newX, y: newY });
@@ -197,6 +205,7 @@ export const GameMaze: React.FC<GameProps> = ({ onExit, addPoints }) => {
     // Check Goal (3)
     if (grid[newY][newX] === 3) {
       if (addPoints) addPoints(30); // Award 30 points per level
+      playLevelUp();
       setShowModal(true);
     }
   };
@@ -206,6 +215,7 @@ export const GameMaze: React.FC<GameProps> = ({ onExit, addPoints }) => {
       setCurrentLevelIndex(prev => prev + 1);
       setShowModal(false);
     } else {
+      playWin();
       setShowModal(false);
       setGameWon(true);
     }

@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Heart, ArrowLeft, ArrowRight, Play } from 'lucide-react';
+import { playCoin, playError, playWin, playLevelUp } from '../services/audioService';
 
 interface LevelData {
   id: number;
@@ -61,8 +63,8 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
   // Refs for Game Loop Logic (To avoid stale closures)
   const playerPosRef = useRef(playerPos);
   const gameStateRef = useRef({ isPlaying, gameOver, showLevelComplete, levelIdx, iman });
-  const requestRef = useRef<number>();
-  const lastTimeRef = useRef<number>();
+  const requestRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number | null>(null);
   const spawnTimerRef = useRef<number>(0);
   const levelRewardGiven = useRef<boolean>(false);
 
@@ -120,6 +122,7 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
         if (!levelRewardGiven.current) {
             levelRewardGiven.current = true;
             if (addPoints) addPoints(30);
+            playLevelUp(); // Sound: Level Complete
         }
         return 100;
       }
@@ -165,13 +168,18 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
 
   const handleCollisionEffect = (item: GameItem) => {
       if (item.type === 'good') {
+          playCoin(); // Sound: Collect
           setMessage(`¡Bien! ${item.label}`);
           setIman(prev => Math.min(100, prev + 5));
       } else {
+          playError(); // Sound: Hit bad item
           setMessage(`¡Mal! ${item.label}`);
           setIman(prev => {
               const newIman = prev - 15;
-              if (newIman <= 0) setGameOver(true);
+              if (newIman <= 0) {
+                  setGameOver(true);
+                  playError(); // Sound: Game Over (reusing error/buzz)
+              }
               return newIman;
           });
       }
@@ -215,7 +223,8 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
     setLevelIdx(0);
     setPlayerPos({ x: 50, y: 80 });
     levelRewardGiven.current = false;
-    lastTimeRef.current = undefined;
+    lastTimeRef.current = null;
+    playCoin(); // Sound: Start
     requestRef.current = requestAnimationFrame(gameLoop);
   };
 
@@ -227,10 +236,11 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
       setIman(100);
       setShowLevelComplete(false);
       levelRewardGiven.current = false;
-      lastTimeRef.current = undefined;
+      lastTimeRef.current = null;
       // Loop continues automatically via ref checks
     } else {
       setGameOver(true); // Victory state handled in render
+      playWin(); // Sound: Victory
     }
   };
 
@@ -366,4 +376,34 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
       <div className="absolute bottom-6 inset-x-0 flex justify-between px-8 md:hidden z-40 pointer-events-none">
            <button 
              className="pointer-events-auto bg-white/20 backdrop-blur-md p-6 rounded-full active:bg-white/40 border border-white/30 shadow-lg"
-             onTouchStart={(e) => { e.preventDefault(); setPlayerPos(p => ({...p, x: Math.max(5
+             onTouchStart={(e) => { e.preventDefault(); setPlayerPos(p => ({...p, x: Math.max(5, p.x - 10)})); }}
+             onClick={() => setPlayerPos(p => ({...p, x: Math.max(5, p.x - 10)}))}
+           >
+               <ArrowLeft className="text-white w-8 h-8" />
+           </button>
+           <button 
+             className="pointer-events-auto bg-white/20 backdrop-blur-md p-6 rounded-full active:bg-white/40 border border-white/30 shadow-lg"
+             onTouchStart={(e) => { e.preventDefault(); setPlayerPos(p => ({...p, x: Math.min(95, p.x + 10)})); }}
+             onClick={() => setPlayerPos(p => ({...p, x: Math.min(95, p.x + 10)}))}
+           >
+               <ArrowRight className="text-white w-8 h-8" />
+           </button>
+      </div>
+
+      <style>{`
+        .bg-dashed-line {
+            background-image: linear-gradient(to bottom, white 50%, transparent 50%);
+            background-size: 100% 120px;
+        }
+        @keyframes scroll {
+            from { background-position: 0 0; }
+            to { background-position: 0 120px; }
+        }
+        .animate-road-scroll {
+            animation: scroll 0.4s linear infinite;
+        }
+      `}</style>
+
+    </div>
+  );
+};

@@ -111,7 +111,7 @@ const App: React.FC = () => {
       case Section.GALLERY:
         return <SectionGallery addPoints={handleAddPoints} />;
       case Section.GAMES:
-        return <SectionGames addPoints={handleAddPoints} />;
+        return <SectionGames addPoints={handleAddPoints} points={points} />;
       case Section.CONTACT:
         return <SectionContact />;
       default:

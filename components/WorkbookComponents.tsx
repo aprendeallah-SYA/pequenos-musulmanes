@@ -34,97 +34,105 @@ const ARABIC_ALPHABET: ArabicLetter[] = [
 ];
 
 export const AlphabetPage: React.FC<{ letter: ArabicLetter }> = ({ letter }) => (
-  <div className="border-4 border-black p-6 h-[29.7cm] w-[21cm] page-break mb-8 bg-white print:border-2 print:mb-0 print:mx-auto relative flex flex-col">
-    {/* Header */}
-    <div className="flex justify-between items-center border-b-2 border-gray-300 pb-2 mb-4">
-      <span className="text-gray-500 text-sm">Cuaderno de Árabe - Pequeño Musulmán</span>
-      <h2 className="text-2xl font-bold uppercase">Letra {letter.name}</h2>
+  <div className="border-4 border-black p-6 h-[29.7cm] w-[21cm] page-break mb-8 bg-white print:border-2 print:mb-0 print:mx-auto relative flex flex-col justify-between">
+    <div>
+        {/* Header */}
+        <div className="flex justify-between items-center border-b-2 border-gray-300 pb-2 mb-4">
+          <span className="text-gray-500 text-sm">Cuaderno de Árabe - Pequeño Musulmán</span>
+          <h2 className="text-2xl font-bold uppercase">Letra {letter.name}</h2>
+        </div>
+        
+        {/* Hero Section */}
+        <div className="flex justify-between items-center mb-6 bg-gray-50 p-4 rounded-xl print:bg-transparent border border-gray-200">
+          <div className="text-center w-1/3">
+            <span className="block text-sm text-gray-500">Nombre</span>
+            <span className="text-2xl font-bold text-emerald-600">{letter.name}</span>
+          </div>
+          <div className="text-8xl font-sans font-bold text-black w-1/3 text-center">{letter.letter}</div>
+          <div className="text-center w-1/3">
+            <span className="block text-sm text-gray-500">Sonido</span>
+            <span className="text-2xl font-bold text-emerald-600">{letter.pronunciation}</span>
+          </div>
+        </div>
+
+        {/* Forms Section */}
+        <div className="grid grid-cols-3 gap-4 mb-6 text-center">
+          <div className="border-2 border-dashed border-gray-300 p-2 rounded-lg">
+            <span className="text-gray-400 text-xs uppercase tracking-wide">Final</span>
+            <div className="text-4xl mt-1 font-bold">{letter.end}</div>
+          </div>
+          <div className="border-2 border-dashed border-gray-300 p-2 rounded-lg">
+            <span className="text-gray-400 text-xs uppercase tracking-wide">Medio</span>
+            <div className="text-4xl mt-1 font-bold">{letter.middle}</div>
+          </div>
+          <div className="border-2 border-dashed border-gray-300 p-2 rounded-lg">
+            <span className="text-gray-400 text-xs uppercase tracking-wide">Inicio</span>
+            <div className="text-4xl mt-1 font-bold">{letter.start}</div>
+          </div>
+        </div>
+
+        {/* Vocabulary/Drawing Section */}
+        <div className="flex items-center gap-6 mb-6 p-4 border-2 border-black rounded-xl">
+            <div className="text-6xl">{letter.icon}</div>
+            <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-800">Aprende una palabra:</h3>
+                <p className="text-3xl font-bold text-emerald-700 font-sans mt-1">{letter.word}</p>
+                <p className="text-lg text-gray-600 italic">{letter.translation}</p>
+            </div>
+            <div className="w-32 h-24 border-2 border-dashed border-gray-400 rounded flex items-center justify-center text-center text-xs text-gray-400">
+                Dibuja aquí<br/>{letter.translation}
+            </div>
+        </div>
+
+        {/* Writing Practice (Planas) */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold mb-2">¡A practicar! Traza y escribe:</h3>
+          
+          {/* Row 1: Large Tracing */}
+          <div className="h-14 border-b border-black flex items-center justify-end gap-6 px-4 relative">
+             <div className="absolute left-0 text-xs text-gray-400">Traza</div>
+             {Array(6).fill(letter.letter).map((l, i) => (
+                 <span key={i} className="text-4xl text-gray-200 font-sans z-10">{l}</span>
+             ))}
+             {/* Guide Lines */}
+             <div className="absolute top-1/2 w-full border-t border-dashed border-gray-300 left-0 -z-0"></div>
+          </div>
+
+          {/* Row 2: Medium Tracing */}
+          <div className="h-14 border-b border-black flex items-center justify-end gap-8 px-4 relative">
+             {Array(8).fill(letter.letter).map((l, i) => (
+                 <span key={i} className="text-3xl text-gray-200 font-sans z-10">{l}</span>
+             ))}
+             <div className="absolute top-1/2 w-full border-t border-dashed border-gray-300 left-0 -z-0"></div>
+          </div>
+
+           {/* Row 3: Forms Mix */}
+           <div className="h-14 border-b border-black flex items-center justify-end gap-6 px-4 relative opacity-40">
+             <span className="text-2xl font-sans">{letter.start}</span>
+             <span className="text-2xl font-sans">{letter.middle}</span>
+             <span className="text-2xl font-sans">{letter.end}</span>
+             <span className="text-2xl font-sans">{letter.start}</span>
+             <span className="text-2xl font-sans">{letter.middle}</span>
+             <span className="text-2xl font-sans">{letter.end}</span>
+             <div className="absolute top-1/2 w-full border-t border-dashed border-gray-300 left-0 -z-0"></div>
+          </div>
+
+          {/* Row 4: Empty Practice */}
+          <div className="h-14 border-b border-black flex items-center relative">
+              <div className="absolute top-1/2 w-full border-t border-dashed border-gray-200 left-0"></div>
+          </div>
+        </div>
+
+        {/* Big Tracing Field (New Addition) */}
+        <div className="mt-4 border-4 border-dashed border-gray-200 rounded-2xl h-36 flex items-center justify-around bg-gray-50 print:bg-white relative">
+            <span className="absolute top-2 left-3 text-xs text-gray-400 uppercase tracking-widest font-bold">Traza Grande</span>
+            {Array(4).fill(letter.letter).map((l, i) => (
+                <span key={i} className="text-8xl text-gray-100 font-sans font-bold select-none z-10">{l}</span>
+            ))}
+        </div>
     </div>
     
-    {/* Hero Section */}
-    <div className="flex justify-between items-center mb-6 bg-gray-50 p-4 rounded-xl print:bg-transparent border border-gray-200">
-      <div className="text-center w-1/3">
-        <span className="block text-sm text-gray-500">Nombre</span>
-        <span className="text-2xl font-bold text-emerald-600">{letter.name}</span>
-      </div>
-      <div className="text-8xl font-sans font-bold text-black w-1/3 text-center">{letter.letter}</div>
-      <div className="text-center w-1/3">
-        <span className="block text-sm text-gray-500">Sonido</span>
-        <span className="text-2xl font-bold text-emerald-600">{letter.pronunciation}</span>
-      </div>
-    </div>
-
-    {/* Forms Section */}
-    <div className="grid grid-cols-3 gap-4 mb-6 text-center">
-      <div className="border-2 border-dashed border-gray-300 p-2 rounded-lg">
-        <span className="text-gray-400 text-xs uppercase tracking-wide">Final</span>
-        <div className="text-4xl mt-1 font-bold">{letter.end}</div>
-      </div>
-      <div className="border-2 border-dashed border-gray-300 p-2 rounded-lg">
-        <span className="text-gray-400 text-xs uppercase tracking-wide">Medio</span>
-        <div className="text-4xl mt-1 font-bold">{letter.middle}</div>
-      </div>
-      <div className="border-2 border-dashed border-gray-300 p-2 rounded-lg">
-        <span className="text-gray-400 text-xs uppercase tracking-wide">Inicio</span>
-        <div className="text-4xl mt-1 font-bold">{letter.start}</div>
-      </div>
-    </div>
-
-    {/* Vocabulary/Drawing Section */}
-    <div className="flex items-center gap-6 mb-6 p-4 border-2 border-black rounded-xl">
-        <div className="text-6xl">{letter.icon}</div>
-        <div className="flex-1">
-            <h3 className="text-xl font-bold text-gray-800">Aprende una palabra:</h3>
-            <p className="text-3xl font-bold text-emerald-700 font-sans mt-1">{letter.word}</p>
-            <p className="text-lg text-gray-600 italic">{letter.translation}</p>
-        </div>
-        <div className="w-32 h-24 border-2 border-dashed border-gray-400 rounded flex items-center justify-center text-center text-xs text-gray-400">
-            Dibuja aquí<br/>{letter.translation}
-        </div>
-    </div>
-
-    {/* Writing Practice (Planas) */}
-    <div className="flex-1 space-y-4">
-      <h3 className="text-lg font-bold mb-2">¡A practicar! Traza y escribe:</h3>
-      
-      {/* Row 1: Large Tracing */}
-      <div className="h-14 border-b border-black flex items-center justify-end gap-6 px-4 relative">
-         <div className="absolute left-0 text-xs text-gray-400">Traza</div>
-         {Array(6).fill(letter.letter).map((l, i) => (
-             <span key={i} className="text-4xl text-gray-200 font-sans z-10">{l}</span>
-         ))}
-         {/* Guide Lines */}
-         <div className="absolute top-1/2 w-full border-t border-dashed border-gray-300 left-0 -z-0"></div>
-      </div>
-
-      {/* Row 2: Medium Tracing */}
-      <div className="h-14 border-b border-black flex items-center justify-end gap-8 px-4 relative">
-         {Array(8).fill(letter.letter).map((l, i) => (
-             <span key={i} className="text-3xl text-gray-200 font-sans z-10">{l}</span>
-         ))}
-         <div className="absolute top-1/2 w-full border-t border-dashed border-gray-300 left-0 -z-0"></div>
-      </div>
-
-       {/* Row 3: Forms Mix */}
-       <div className="h-14 border-b border-black flex items-center justify-end gap-6 px-4 relative opacity-40">
-         <span className="text-2xl font-sans">{letter.start}</span>
-         <span className="text-2xl font-sans">{letter.middle}</span>
-         <span className="text-2xl font-sans">{letter.end}</span>
-         <span className="text-2xl font-sans">{letter.start}</span>
-         <span className="text-2xl font-sans">{letter.middle}</span>
-         <span className="text-2xl font-sans">{letter.end}</span>
-         <div className="absolute top-1/2 w-full border-t border-dashed border-gray-300 left-0 -z-0"></div>
-      </div>
-
-      {/* Row 4-6: Empty Practice */}
-      {[1, 2, 3].map((line) => (
-        <div key={line} className="h-14 border-b border-black flex items-center relative">
-            <div className="absolute top-1/2 w-full border-t border-dashed border-gray-200 left-0"></div>
-        </div>
-      ))}
-    </div>
-    
-    <div className="mt-auto pt-4 text-center text-xs text-gray-400">
+    <div className="pt-2 text-center text-xs text-gray-400">
       www.pequeñomusulman.com | ¡Bismillah, empieza con la derecha!
     </div>
   </div>

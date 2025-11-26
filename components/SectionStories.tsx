@@ -97,12 +97,27 @@ export const SectionStories: React.FC<SectionStoriesProps> = ({ addPoints }) => 
           
           <div className="p-8 min-h-[400px]">
             {loading ? (
-              <div className="flex flex-col items-center justify-center h-full space-y-4">
-                <Loader2 className="w-12 h-12 animate-spin text-orange-400" />
-                <p className="text-gray-500 animate-pulse">Escribiendo una historia mágica...</p>
+              <div className="flex flex-col items-center justify-center h-full min-h-[300px] space-y-6">
+                <div className="relative">
+                   {/* Glow effect behind loader */}
+                   <div className="absolute inset-0 bg-yellow-200 blur-2xl opacity-60 animate-pulse rounded-full scale-150"></div>
+                   <Loader2 className="w-16 h-16 animate-spin text-orange-500 relative z-10" />
+                </div>
+                
+                <div className="text-xl text-gray-600 font-medium flex flex-col sm:flex-row items-center gap-2">
+                  <span>Escribiendo una historia</span>
+                  <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 animate-pulse text-3xl drop-shadow-sm font-serif italic">
+                    ✨ Mágica ✨
+                  </span>
+                  <div className="flex gap-1 mt-2 sm:mt-0">
+                    <span className="animate-bounce [animation-delay:-0.3s] text-orange-500 text-2xl">.</span>
+                    <span className="animate-bounce [animation-delay:-0.15s] text-purple-500 text-2xl">.</span>
+                    <span className="animate-bounce text-pink-500 text-2xl">.</span>
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="prose prose-lg max-w-none text-gray-700 leading-loose whitespace-pre-line">
+              <div className="prose prose-lg max-w-none text-gray-700 leading-loose whitespace-pre-line animate-fade-in">
                 {storyContent}
               </div>
             )}

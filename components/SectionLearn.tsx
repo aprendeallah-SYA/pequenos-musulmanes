@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Star, Heart, Cloud, Sun } from 'lucide-react';
+import { Star, Heart, Cloud, Sun, Volume2 } from 'lucide-react';
 
 export const SectionLearn: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'pillars' | 'prophet' | 'deeds' | 'arabic'>('pillars');
+  const [playingWord, setPlayingWord] = useState<string | null>(null);
 
   const pillars = [
     { name: 'Shahada', desc: 'La Fe: No hay dios más que Allah.', icon: '☝️' },
@@ -13,11 +14,33 @@ export const SectionLearn: React.FC = () => {
   ];
 
   const arabicWords = [
-    { word: 'Allah', meaning: 'Dios', audio: 'All-lah' },
-    { word: 'Salam', meaning: 'Paz', audio: 'Sa-lam' },
-    { word: 'Bismillah', meaning: 'En nombre de Allah', audio: 'Bis-mil-lah' },
-    { word: 'Alhamdulillah', meaning: 'Gracias a Dios', audio: 'Al-ham-du-lil-lah' },
+    { word: 'Allah', arabic: 'الله', meaning: 'Dios', audio: 'Al-lah' },
+    { word: 'Assalamu Alaykum', arabic: 'السَّلامُ عَلَيْكُمْ', meaning: 'La paz sea contigo', audio: 'As-sa-la-mu A-lay-kum' },
+    { word: 'Bismillah', arabic: 'بِسْمِ الله', meaning: 'En nombre de Allah', audio: 'Bis-mil-lah' },
+    { word: 'Alhamdulillah', arabic: 'الْحَمْدُ لِلَّهِ', meaning: 'Gracias a Dios', audio: 'Al-ham-du-lil-lah' },
+    { word: 'SubhanAllah', arabic: 'سُبْحَانَ ٱللَّٰهِ', meaning: 'Gloria a Allah', audio: 'Sub-han-Al-lah' },
+    { word: 'Allahu Akbar', arabic: 'ٱللَّٰهُ أَكْبَرُ', meaning: 'Allah es el más Grande', audio: 'Al-la-hu Ak-bar' },
+    { word: 'Jazakallahu Khair', arabic: 'جَزَاكَ ٱللَّٰهُ خَيْرًا', meaning: 'Que Allah te recompense', audio: 'Ja-za-ka-lah Khai-ran' },
+    { word: 'InshaAllah', arabic: 'إِنْ شَاءَ ٱللَّٰهُ', meaning: 'Si Allah quiere', audio: 'In-sha-Al-lah' },
+    { word: 'MashAllah', arabic: 'مَا شَاءَ ٱللَّٰهُ', meaning: 'Lo que Allah quiso', audio: 'Ma-sha-Al-lah' },
+    { word: 'Astaghfirullah', arabic: 'أَسْتَغْفِرُ ٱللَّٰهَ', meaning: 'Perdóname Allah', audio: 'As-tag-fi-rul-lah' },
   ];
+
+  const handlePlayAudio = (textToRead: string, wordId: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel(); // Stop previous audio
+      const utterance = new SpeechSynthesisUtterance(textToRead);
+      utterance.lang = 'ar-SA'; // Set language to Arabic
+      utterance.rate = 0.8; // Slower for learning
+      
+      utterance.onstart = () => setPlayingWord(wordId);
+      utterance.onend = () => setPlayingWord(null);
+      
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert("Tu navegador no soporta la reproducción de audio.");
+    }
+  };
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8 animate-fade-in">
@@ -106,15 +129,37 @@ export const SectionLearn: React.FC = () => {
         )}
 
         {activeTab === 'arabic' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {arabicWords.map((word, idx) => (
-              <div key={idx} className="bg-yellow-50 p-6 rounded-2xl border-dashed border-2 border-yellow-400 flex flex-col items-center hover:bg-yellow-100 cursor-pointer transition-colors group">
-                <h3 className="text-3xl font-bold text-gray-800 mb-1">{word.word}</h3>
-                <span className="text-sm text-gray-500 font-mono bg-white px-2 py-1 rounded mb-2">{word.audio}</span>
-                <p className="text-xl text-yellow-700">{word.meaning}</p>
-                <div className="mt-2 text-xs text-gray-400 group-hover:text-yellow-600">¡Haz clic y repite!</div>
-              </div>
-            ))}
+          <div>
+            <div className="text-center mb-6">
+               <h3 className="text-2xl font-bold text-yellow-600 mb-2">Palabras Mágicas</h3>
+               <p className="text-gray-500">Haz clic en el botón de audio para escuchar cómo se dice en árabe.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {arabicWords.map((item, idx) => (
+                <div key={idx} className="bg-yellow-50 p-6 rounded-2xl border-dashed border-2 border-yellow-400 flex flex-col items-center hover:bg-yellow-100 transition-colors group relative">
+                  <div className="w-full flex justify-between items-start mb-2">
+                     <span className="text-xs bg-white px-2 py-1 rounded text-gray-400 font-mono border border-gray-100">
+                       {item.audio}
+                     </span>
+                     <button 
+                       onClick={() => handlePlayAudio(item.arabic, item.word)}
+                       className={`p-2 rounded-full transition-all ${
+                         playingWord === item.word 
+                           ? 'bg-yellow-500 text-white scale-110 shadow-lg' 
+                           : 'bg-yellow-200 text-yellow-700 hover:bg-yellow-300'
+                       }`}
+                       title="Escuchar pronunciación"
+                     >
+                       <Volume2 size={20} className={playingWord === item.word ? 'animate-pulse' : ''} />
+                     </button>
+                  </div>
+                  
+                  <h3 className="text-2xl font-bold text-gray-800 mb-1">{item.word}</h3>
+                  <p className="text-3xl font-serif text-emerald-700 my-2" lang="ar" dir="rtl">{item.arabic}</p>
+                  <p className="text-lg text-yellow-800 font-medium text-center">{item.meaning}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
