@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navigation } from './components/Navigation';
 import { SectionLearn } from './components/SectionLearn';
@@ -5,6 +6,7 @@ import { SectionStories } from './components/SectionStories';
 import { SectionGallery } from './components/SectionGallery';
 import { SectionGames } from './components/SectionGames';
 import { SectionContact } from './components/SectionContact';
+import { GuideAvatar } from './components/GuideAvatar';
 import { Section } from './types';
 import { Sparkles, RefreshCw, Image as ImageIcon, Star } from 'lucide-react';
 import { generateImage } from './services/geminiService';
@@ -19,10 +21,14 @@ const App: React.FC = () => {
   const [rewardNotification, setRewardNotification] = useState<{show: boolean, amount: number} | null>(null);
 
   useEffect(() => {
-    // Load points from LocalStorage
-    const savedPoints = localStorage.getItem('pm_user_points');
-    if (savedPoints) {
-      setPoints(parseInt(savedPoints, 10));
+    try {
+        // Load points from LocalStorage
+        const savedPoints = localStorage.getItem('pm_user_points');
+        if (savedPoints) {
+          setPoints(parseInt(savedPoints, 10));
+        }
+    } catch (e) {
+        console.warn("LocalStorage not available:", e);
     }
 
     // Intentar generar el logo al cargar si no existe
@@ -34,7 +40,12 @@ const App: React.FC = () => {
   const handleAddPoints = (amount: number) => {
     const newTotal = points + amount;
     setPoints(newTotal);
-    localStorage.setItem('pm_user_points', newTotal.toString());
+    
+    try {
+        localStorage.setItem('pm_user_points', newTotal.toString());
+    } catch (e) {
+        // Ignore storage errors
+    }
     
     // Trigger notification
     setRewardNotification({ show: true, amount });
@@ -105,7 +116,7 @@ const App: React.FC = () => {
           </div>
         );
       case Section.LEARN:
-        return <SectionLearn />;
+        return <SectionLearn addPoints={handleAddPoints} />;
       case Section.STORIES:
         return <SectionStories addPoints={handleAddPoints} />;
       case Section.GALLERY:
@@ -115,7 +126,7 @@ const App: React.FC = () => {
       case Section.CONTACT:
         return <SectionContact />;
       default:
-        return <SectionLearn />;
+        return <SectionLearn addPoints={handleAddPoints} />;
     }
   };
 
@@ -123,6 +134,8 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-50 font-sans text-gray-800 selection:bg-green-200 selection:text-green-900">
       <Navigation currentSection={currentSection} onNavigate={setCurrentSection} points={points} />
       
+      <GuideAvatar />
+
       {/* Reward Notification Overlay */}
       {rewardNotification && (
         <div className="fixed top-24 right-4 md:right-10 z-[100] animate-bounce-in pointer-events-none">

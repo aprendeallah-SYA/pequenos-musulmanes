@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { GameType } from '../types';
 import { GameHalalHaram } from './GameHalalHaram';
 import { GameJihad } from './GameJihad';
 import { GameMaze } from './GameMaze';
-import { GameObstacle } from './GameObstacle';
+import { GameZakatRun } from './GameZakatRun';
 import { Play, Lock } from 'lucide-react';
 
 interface SectionGamesProps {
@@ -31,19 +32,19 @@ export const SectionGames: React.FC<SectionGamesProps> = ({ addPoints, points })
             threshold: 0 
         },
         { 
+            id: GameType.ZAKAT_RUN, 
+            title: 'Carrera del Zakat', 
+            desc: 'Corre, calcula y ayuda a los pobres', 
+            color: 'bg-emerald-500', 
+            threshold: 10 // Desbloqueo temprano
+        },
+        { 
             id: GameType.MAZE, 
             title: 'Laberinto de Pilares', 
             desc: 'Encuentra el camino a la Kaaba', 
             color: 'bg-yellow-400', 
             threshold: 30 // Bloqueado hasta 30 puntos
-        }, 
-        { 
-            id: GameType.OBSTACLE, 
-            title: 'Camino a la Mezquita', 
-            desc: 'Supera obstáculos para llegar al Salat', 
-            color: 'bg-blue-400', 
-            threshold: 30 // Bloqueado hasta 30 puntos
-        },
+        }
     ];
 
     if (activeGame === GameType.HALAL_HARAM) {
@@ -53,13 +54,13 @@ export const SectionGames: React.FC<SectionGamesProps> = ({ addPoints, points })
     if (activeGame === GameType.JIHAD) {
         return <div className="p-4"><GameJihad onExit={() => setActiveGame(GameType.NONE)} addPoints={addPoints} /></div>;
     }
+    
+    if (activeGame === GameType.ZAKAT_RUN) {
+        return <div className="p-4"><GameZakatRun onExit={() => setActiveGame(GameType.NONE)} addPoints={addPoints} /></div>;
+    }
 
     if (activeGame === GameType.MAZE) {
         return <GameMaze onExit={() => setActiveGame(GameType.NONE)} addPoints={addPoints} />;
-    }
-
-    if (activeGame === GameType.OBSTACLE) {
-        return <GameObstacle onExit={() => setActiveGame(GameType.NONE)} addPoints={addPoints} />;
     }
 
     return (

@@ -89,34 +89,28 @@ const generateMaze = (levelIdx: number) => {
     grid[1][1] = 2; // Start
 
     // --- BRAIDING (ELIMINAR CALLEJONES SIN SALIDA) ---
-    // Esto es crucial para el Nivel 3 (Monedas) para asegurar múltiples rutas
-    // y evitar que el jugador tenga que retroceder demasiado.
-    const braidingFactor = config.mechanic === 'coins' ? 0.7 : 0.1; // 70% de eliminación en nivel de monedas
+    const braidingFactor = config.mechanic === 'coins' ? 0.7 : 0.1;
 
     for (let y = 1; y < size - 1; y++) {
         for (let x = 1; x < size - 1; x++) {
             if (grid[y][x] === 0) {
-                // Contar muros alrededor (Arriba, Abajo, Izq, Der)
                 const neighbors = [
                     {x: x, y: y-1}, {x: x, y: y+1}, {x: x-1, y: y}, {x: x+1, y: y}
                 ];
                 const walls = neighbors.filter(n => grid[n.y][n.x] === 1);
 
-                // Si hay 3 muros, es un callejon sin salida
                 if (walls.length === 3 && Math.random() < braidingFactor) {
-                    // Elegir un muro válido para derribar (que no sea borde del mapa)
                     const validWallsToRemove = walls.filter(w => w.x > 0 && w.x < size - 1 && w.y > 0 && w.y < size - 1);
-                    
                     if (validWallsToRemove.length > 0) {
                         const remove = validWallsToRemove[Math.floor(Math.random() * validWallsToRemove.length)];
-                        grid[remove.y][remove.x] = 0; // Abrir camino
+                        grid[remove.y][remove.x] = 0;
                     }
                 }
             }
         }
     }
 
-    // Find Goal (furthest open point bottom-right)
+    // Find Goal
     let gx = size - 2, gy = size - 2;
     while(grid[gy][gx] !== 0) { 
         if (gx > 1) gx--; 
@@ -125,8 +119,6 @@ const generateMaze = (levelIdx: number) => {
     grid[gy][gx] = 3; // Goal
 
     // --- APLICAR MECÁNICAS ESPECÍFICAS ---
-    
-    // Nivel 1: Muros de Ilusión
     if (config.mechanic === 'illusion') {
         for(let y=1; y<size-1; y++) {
             for(let x=1; x<size-1; x++) {
@@ -139,7 +131,6 @@ const generateMaze = (levelIdx: number) => {
         }
     }
 
-    // Nivel 2: Arena (Slow)
     if (config.mechanic === 'sand') {
         for(let y=1; y<size-1; y++) {
             for(let x=1; x<size-1; x++) {
@@ -150,33 +141,23 @@ const generateMaze = (levelIdx: number) => {
         }
     }
 
-    // Nivel 3: Monedas y Puerta
     if (config.mechanic === 'coins') {
-        // Colocar Puerta adyacente a la meta (bloqueo final)
         const adj = [{dx:0, dy:1}, {dx:0, dy:-1}, {dx:1, dy:0}, {dx:-1, dy:0}];
-        
-        // Buscar un punto adyacente a la meta que sea camino
         for(let d of adj) {
             const px = gx + d.dx; 
             const py = gy + d.dy;
             if (px > 0 && px < size && py > 0 && py < size && grid[py][px] === 0) {
                 grid[py][px] = 7; // Gate
-                // Solo una puerta es suficiente generalmente, pero aseguramos que bloquee el acceso directo
-                // Al ser un laberinto "braided", el jugador puede rodear, pero la meta es única.
                 break; 
             }
         }
         
-        // Colocar 5 monedas dispersas
         let coinsPlaced = 0;
         let attempts = 0;
         while(coinsPlaced < 5 && attempts < 2000) {
             attempts++;
             const rx = Math.floor(Math.random() * size);
             const ry = Math.floor(Math.random() * size);
-            
-            // Condiciones: Espacio vacío, lejos del inicio y LEJOS de la meta (para no quedar detrás de la puerta)
-            // Distancia Manhattan
             const distStart = Math.abs(rx-1) + Math.abs(ry-1);
             const distGoal = Math.abs(rx-gx) + Math.abs(ry-gy);
 
@@ -187,7 +168,6 @@ const generateMaze = (levelIdx: number) => {
         }
     }
 
-    // Nivel 5: Portales
     if (config.mechanic === 'teleport') {
         let p1 = {x:0, y:0}, p2 = {x:0, y:0};
         let attempts = 0;
@@ -202,9 +182,8 @@ const generateMaze = (levelIdx: number) => {
             p2.y = Math.floor(Math.random()*size); 
             attempts++;
         }
-        
-        if (grid[p1.y][p1.x] === 0) grid[p1.y][p1.x] = 8; // Portal A
-        if (grid[p2.y][p2.x] === 0) grid[p2.y][p2.x] = 9; // Portal B
+        if (grid[p1.y][p1.x] === 0) grid[p1.y][p1.x] = 8;
+        if (grid[p2.y][p2.x] === 0) grid[p2.y][p2.x] = 9;
     }
 
     return grid;
@@ -216,15 +195,23 @@ export const GameMaze: React.FC<GameProps> = ({ onExit, addPoints }) => {
   const [grid, setGrid] = useState<number[][]>([]);
   const [playerPos, setPlayerPos] = useState({ x: 1, y: 1 });
   const [gameState, setGameState] = useState<'playing' | 'won' | 'lost' | 'level_complete'>('playing');
-  
-  // Mechanics State
   const [coins, setCoins] = useState(0);
   const [stamina, setStamina] = useState(100);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [isSlowed, setIsSlowed] = useState(false); // For Sand mechanic
+  const [isSlowed, setIsSlowed] = useState(false);
 
   const config = LEVELS[levelIdx];
   const timerRef = useRef<number | null>(null);
+  
+  // Use a Ref to hold the latest state for the event listener (Optimization)
+  const stateRef = useRef({
+      grid, playerPos, gameState, isSlowed, coins, stamina, config, levelIdx
+  });
+
+  // Sync ref with state
+  useEffect(() => {
+      stateRef.current = { grid, playerPos, gameState, isSlowed, coins, stamina, config, levelIdx };
+  }, [grid, playerPos, gameState, isSlowed, coins, stamina, config, levelIdx]);
 
   // --- INIT LEVEL ---
   useEffect(() => {
@@ -248,7 +235,6 @@ export const GameMaze: React.FC<GameProps> = ({ onExit, addPoints }) => {
       const newGrid = generateMaze(idx);
       setGrid(newGrid);
       
-      // Find Start
       let start = {x:1, y:1};
       for(let y=0; y<newGrid.length; y++) {
           for(let x=0; x<newGrid[0].length; x++) {
@@ -281,114 +267,110 @@ export const GameMaze: React.FC<GameProps> = ({ onExit, addPoints }) => {
   // --- CONTROLS ---
   useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
-          if (gameState !== 'playing') return;
+          // Read from ref to avoid stale closures and re-binding listeners
+          const current = stateRef.current;
+          if (current.gameState !== 'playing') return;
           
-          if (['ArrowUp', 'w', 'W'].includes(e.key)) move(0, -1);
-          if (['ArrowDown', 's', 'S'].includes(e.key)) move(0, 1);
-          if (['ArrowLeft', 'a', 'A'].includes(e.key)) move(-1, 0);
-          if (['ArrowRight', 'd', 'D'].includes(e.key)) move(1, 0);
+          let dx = 0, dy = 0;
+          if (['ArrowUp', 'w', 'W'].includes(e.key)) dy = -1;
+          else if (['ArrowDown', 's', 'S'].includes(e.key)) dy = 1;
+          else if (['ArrowLeft', 'a', 'A'].includes(e.key)) dx = -1;
+          else if (['ArrowRight', 'd', 'D'].includes(e.key)) dx = 1;
+          
+          if (dx === 0 && dy === 0) return;
 
-           // Prevent scrolling
-           if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
-            e.preventDefault();
-        }
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, playerPos, isSlowed, coins, stamina]);
+          e.preventDefault();
 
-  const move = (dx: number, dy: number) => {
-      if (gameState !== 'playing') return;
+          // Move Logic
+          // Sand Mechanic: Skip turn 50% of time if slowed
+          if (current.isSlowed && Math.random() > 0.5) {
+               return; 
+          }
 
-      // Sand Mechanic: Skip turn 50% of time if slowed
-      if (isSlowed && Math.random() > 0.5) {
-          return; 
-      }
+          const nx = current.playerPos.x + dx;
+          const ny = current.playerPos.y + dy;
+          
+          // Bounds check
+          if (ny < 0 || ny >= current.grid.length || nx < 0 || nx >= current.grid[0].length) return;
 
-      const nx = playerPos.x + dx;
-      const ny = playerPos.y + dy;
-      
-      // Bounds check
-      if (ny < 0 || ny >= grid.length || nx < 0 || nx >= grid[0].length) return;
+          const cell = current.grid[ny][nx];
 
-      const cell = grid[ny][nx];
+          // Logic per cell type
+          if (cell === 1) {
+              playError(); 
+              return;
+          }
 
-      // Logic per cell type
-      if (cell === 1) {
-          playError(); // Wall hit
-          return;
-      }
+          // Check Gate (Level 3)
+          if (cell === 7) {
+              if (current.coins >= 5) {
+                  playSuccess();
+                  const newGrid = [...current.grid];
+                  newGrid[ny][nx] = 0;
+                  setGrid(newGrid);
+                  setPlayerPos({x: nx, y: ny});
+              } else {
+                  playError(); 
+              }
+              return;
+          }
 
-      // Check Gate (Level 3)
-      if (cell === 7) {
-          if (coins >= 5) {
-              playSuccess();
-              // Open gate visually
-              const newGrid = [...grid];
+          let nextPos = { x: nx, y: ny };
+          let newSlowed = false;
+
+          // Handle Mechanics
+          if (cell === 3) { // Goal
+              handleLevelComplete();
+              return;
+          }
+          else if (cell === 4) { // Illusion Wall
+              playSuccess(); 
+          }
+          else if (cell === 5) { // Sand
+              newSlowed = true;
+          }
+          else if (cell === 6) { // Coin
+              playCoin();
+              setCoins(c => c + 1);
+              const newGrid = [...current.grid];
               newGrid[ny][nx] = 0;
               setGrid(newGrid);
-              setPlayerPos({x: nx, y: ny});
-          } else {
-              playError(); // Locked
-              // Show hint?
           }
-          return;
-      }
+          else if (cell === 8) { // Portal A
+              playSuccess();
+              const target = findCell(current.grid, 9);
+              if (target) nextPos = target;
+          }
+          else if (cell === 9) { // Portal B
+              playSuccess();
+              const target = findCell(current.grid, 8);
+              if (target) nextPos = target;
+          }
 
-      // Valid Move
-      let nextPos = { x: nx, y: ny };
-      let newSlowed = false;
+          setPlayerPos(nextPos);
+          setIsSlowed(newSlowed);
 
-      // Handle Mechanics
-      if (cell === 3) { // Goal
-          handleLevelComplete();
-          return;
-      }
-      else if (cell === 4) { // Illusion Wall
-          playSuccess(); // Sound clue
-      }
-      else if (cell === 5) { // Sand
-          newSlowed = true;
-      }
-      else if (cell === 6) { // Coin
-          playCoin();
-          setCoins(c => c + 1);
-          // Remove coin
-          const newGrid = [...grid];
-          newGrid[ny][nx] = 0;
-          setGrid(newGrid);
-      }
-      else if (cell === 8) { // Portal A -> Find B (9)
-          playSuccess();
-          const target = findCell(9);
-          if (target) nextPos = target;
-      }
-      else if (cell === 9) { // Portal B -> Find A (8)
-          playSuccess();
-          const target = findCell(8);
-          if (target) nextPos = target;
-      }
+          // Stamina Drain (Level 4)
+          if (current.config.mechanic === 'stamina') {
+              setStamina(prev => {
+                  const next = prev - 2;
+                  if (next <= 0) {
+                      handleGameOver('¡Te quedaste sin energía!');
+                      return 0;
+                  }
+                  return next;
+              });
+          }
+      };
 
-      setPlayerPos(nextPos);
-      setIsSlowed(newSlowed);
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []); // Empty dependency array = listener bound once
 
-      // Stamina Drain (Level 4)
-      if (config.mechanic === 'stamina') {
-          setStamina(prev => {
-              const next = prev - 2;
-              if (next <= 0) {
-                  handleGameOver('¡Te quedaste sin energía!');
-                  return 0;
-              }
-              return next;
-          });
-      }
-  };
-
-  const findCell = (id: number) => {
-      for(let y=0; y<grid.length; y++) {
-          for(let x=0; x<grid[0].length; x++) {
-              if(grid[y][x] === id) return {x, y};
+  const findCell = (g: number[][], id: number) => {
+      for(let y=0; y<g.length; y++) {
+          for(let x=0; x<g[0].length; x++) {
+              if(g[y][x] === id) return {x, y};
           }
       }
       return null;
@@ -422,7 +404,7 @@ export const GameMaze: React.FC<GameProps> = ({ onExit, addPoints }) => {
   };
 
   // --- RENDER ---
-  const cellSize = Math.min(30, 600 / config.size); // Responsive cell size
+  const cellSize = Math.min(30, 600 / config.size); 
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[500px] bg-white p-4 font-mono select-none">
@@ -475,17 +457,17 @@ export const GameMaze: React.FC<GameProps> = ({ onExit, addPoints }) => {
                 {grid.map((row, y) => (
                     row.map((cell, x) => {
                         const isPlayer = playerPos.x === x && playerPos.y === y;
-                        let cellClass = "bg-white"; // 0: Path
+                        let cellClass = "bg-white"; 
                         let content = null;
 
-                        if (cell === 1) cellClass = "bg-black"; // Wall
-                        else if (cell === 2) content = "🏁"; // Start
-                        else if (cell === 3) content = config.goalEmoji; // Goal
-                        else if (cell === 4) cellClass = "bg-gray-800 opacity-90 border border-gray-600"; // Illusion (looks like wall)
-                        else if (cell === 5) cellClass = "bg-yellow-100 opacity-50"; // Sand
-                        else if (cell === 6) content = "🪙"; // Coin
-                        else if (cell === 7) content = <Lock size={cellSize*0.8} className="text-red-500"/>; // Gate
-                        else if (cell === 8 || cell === 9) content = <Zap size={cellSize*0.8} className="text-purple-500 animate-pulse"/>; // Portal
+                        if (cell === 1) cellClass = "bg-black"; 
+                        else if (cell === 2) content = "🏁"; 
+                        else if (cell === 3) content = config.goalEmoji; 
+                        else if (cell === 4) cellClass = "bg-gray-800 opacity-90 border border-gray-600"; 
+                        else if (cell === 5) cellClass = "bg-yellow-100 opacity-50"; 
+                        else if (cell === 6) content = "🪙"; 
+                        else if (cell === 7) content = <Lock size={cellSize*0.8} className="text-red-500"/>; 
+                        else if (cell === 8 || cell === 9) content = <Zap size={cellSize*0.8} className="text-purple-500 animate-pulse"/>; 
 
                         return (
                             <div 

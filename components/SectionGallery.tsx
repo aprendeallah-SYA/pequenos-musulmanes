@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Download, Printer, Palette, BookOpen, RefreshCw, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Download, Printer, Palette, RefreshCw, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { AlphabetWorkbook, PrayerPage } from './WorkbookComponents';
 import { ArabicLetter } from '../types';
 import { generateImage } from '../services/geminiService';

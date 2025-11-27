@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { generateStory } from '../services/geminiService';
-import { Book, Loader2, Volume2, Pause, Square, Play } from 'lucide-react';
+import { Book, Loader2, Pause, Square, Play } from 'lucide-react';
 
 const PROPHETS = [
   "Adam", "Idris", "Nuh", "Hud", "Saleh", "Ibrahim", "Ismail", "Ishaq",

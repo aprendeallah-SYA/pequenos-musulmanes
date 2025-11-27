@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, Zap, Heart, RefreshCw } from 'lucide-react';
+import { Trophy, RefreshCw } from 'lucide-react';
 import { playCoin, playError, playWin, playJump, playLevelUp } from '../services/audioService';
 
 interface GameProps {
@@ -10,8 +10,6 @@ interface GameProps {
 
 // --- CONSTANTES ADAPTADAS DEL CÓDIGO PYTHON ---
 const MAX_CONCENTRACION = 100;
-// const MIN_CONCENTRACION_CRITICA = 30; // Usado para efectos visuales (rojo)
-// const UMBRAL_COMPLEJIDAD = 70; // Usado para velocidad
 
 type ObstacleType = 'Salto' | 'Deslizarse' | 'Desvio' | 'Susurro' | 'Coin';
 
@@ -202,7 +200,7 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
     // 20% Chance of Coin (Hasanat)
     if (rand < 0.2) {
          gameState.current.entities.push({
-            id: Date.now() + Math.random(),
+            id: performance.now(),
             lane,
             z: 0,
             def: { name: 'Hasanat', type: 'Coin', prob: 0, emoji: '🌟' }
@@ -210,7 +208,6 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
          return;
     }
 
-    // Logic to select obstacle based on Python probability weights
     let selectedObstacle = theme.obstacles[0];
     const roll = Math.random(); // 0 to 1
     let cumulativeProb = 0;
@@ -224,7 +221,7 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
     }
 
     gameState.current.entities.push({
-      id: Date.now() + Math.random(),
+      id: performance.now(),
       lane,
       z: 0,
       def: selectedObstacle
@@ -233,11 +230,15 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
 
   const gameLoop = (time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time;
-    const deltaTime = time - lastTimeRef.current;
+    // CLAMP DELTA TIME (Max 100ms) to prevent huge jumps on tab switch
+    const deltaTime = Math.min(time - lastTimeRef.current, 100); 
     lastTimeRef.current = time;
 
     // 1. Update Game State
-    gameState.current.speed += 0.00005 * deltaTime; // Slowly increase speed
+    gameState.current.speed += 0.00005 * deltaTime; 
+    // Cap Speed
+    if (gameState.current.speed > 1.5) gameState.current.speed = 1.5;
+
     gameState.current.distance += gameState.current.speed;
 
     // WAQT PROGRESSION LOGIC (Every 500 distance units)
@@ -246,7 +247,6 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
         gameState.current.waqtIndex++;
         setCurrentWaqtIndex(gameState.current.waqtIndex);
         playLevelUp();
-        // Heal a bit on level up
         gameState.current.concentration = Math.min(MAX_CONCENTRACION, gameState.current.concentration + 20);
         setConcentration(gameState.current.concentration);
     }
@@ -262,11 +262,11 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
     const collisionThreshold = 5;
 
     // Move entities
-    gameState.current.entities.forEach(entity => {
-      entity.z += gameState.current.speed * (deltaTime / 10);
-    });
+    for(const entity of gameState.current.entities) {
+        entity.z += gameState.current.speed * (deltaTime / 10);
+    }
 
-    // Filter and check collisions
+    // Filter and check collisions (In-place filtering optimization could be done, but simple filter is ok for size)
     gameState.current.entities = gameState.current.entities.filter(entity => {
       if (entity.z > 110) return false; // Remove if passed
 
@@ -286,7 +286,6 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
             // OBSTACLE HIT
             let avoided = false;
 
-            // 'Salto' type can be jumped over
             if (entity.def.type === 'Salto' && gameState.current.isJumping) {
                 avoided = true;
             }
@@ -300,12 +299,11 @@ export const GameObstacle: React.FC<GameProps> = ({ onExit, addPoints }) => {
                 gameState.current.concentration -= damage;
                 setConcentration(gameState.current.concentration);
 
-                // Check Game Over
                 if (gameState.current.concentration <= 0) {
                     handleGameOver(`¡Te distrajiste con: ${entity.def.name}!`);
                     return false;
                 }
-                return true; // Keep visible but collected
+                return true; 
             }
         }
       }

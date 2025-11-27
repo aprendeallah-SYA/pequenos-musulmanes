@@ -237,8 +237,8 @@ export const GameJihad: React.FC<GameProps> = ({ onExit, addPoints }) => {
 
         player.cooldown = Date.now() + cooldownTime;
 
-        // Check Hit
-        const dist = Math.abs((player.x + 25) - (enemy.x + 25)); // Center to center roughly
+        // Check Hit (Adjusted logic for sprite center: +40px)
+        const dist = Math.abs((player.x + 40) - (enemy.x + 40)); 
         // Check direction
         const facingEnemy = (player.facing === 1 && enemy.x > player.x) || (player.facing === -1 && enemy.x < player.x);
 

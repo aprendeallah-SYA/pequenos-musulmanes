@@ -1,3 +1,4 @@
+
 export enum Section {
   HOME = 'HOME',
   LEARN = 'LEARN',
@@ -10,10 +11,10 @@ export enum Section {
 export enum GameType {
   NONE = 'NONE',
   HALAL_HARAM = 'HALAL_HARAM',
-  OBSTACLE = 'OBSTACLE',
   MAZE = 'MAZE',
   JIHAD = 'JIHAD',
-  PUZZLE = 'PUZZLE'
+  PUZZLE = 'PUZZLE',
+  ZAKAT_RUN = 'ZAKAT_RUN'
 }
 
 export interface Story {
