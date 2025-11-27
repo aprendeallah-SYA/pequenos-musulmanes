@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-// Importamos index.css para que Vite sepa dónde está (Aunque esté vacío)
-import './index.css'; 
+
+// LA CORRECCIÓN: Eliminada la línea "import './index.css';"
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
