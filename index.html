@@ -69,9 +69,20 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+
+        /* simple loading fallback so the page isn't blank */
+        #loading-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #009068;
+            font-weight: 600;
+            gap: 0.6rem;
+        }
     </style>
 
-<link rel="stylesheet" href="/index.css">
+<link rel="stylesheet" href="index.css">
 <script type="importmap">
 {
   "imports": {
@@ -83,9 +94,32 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/assets/index-DvEwW8jD.js"></script>
+  <script type="module" crossorigin src="index-DvEwW8jD.js"></script>
 </head>
 <body>
+    <!-- Loading / fallback visible until your React app mounts -->
+    <div id="loading-fallback" role="status" aria-live="polite">
+        <svg class="animate-spin-slow" width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#87CEEB" stroke-width="3" stroke-linecap="round" stroke-dasharray="31.4 31.4"/></svg>
+        Cargando Pequeño Musulmán...
+    </div>
+
     <div id="root"></div>
+
+    <noscript class="no-js-warning" style="display:block;text-align:center;padding:2rem;color:#555;">
+        Para ver esta página necesitas activar JavaScript en tu navegador.
+    </noscript>
+
+    <script>
+      // Remove loading fallback when the app mounts. Your React app can also remove it after hydration.
+      // This will not error if app's own mount code removes it instead.
+      const removeLoading = () => {
+        const f = document.getElementById('loading-fallback');
+        if (f) f.remove();
+      };
+      // try to remove after a short timeout in case app mounts fast
+      window.addEventListener('load', () => setTimeout(removeLoading, 500));
+      // If your React entry does that, this is just a safety net.
+    </script>
 </body>
+</html>
 </html>
