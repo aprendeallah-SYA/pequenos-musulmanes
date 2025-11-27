@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-      // ESTA ES LA LÍNEA MÁGICA QUE FALTA:
+      // ESTA ES LA LÍNEA CRÍTICA PARA GITHUB PAGES
       base: '/pequenos-musulmanes/', 
       
       server: {
