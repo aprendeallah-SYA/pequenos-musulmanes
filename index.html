@@ -29,16 +29,43 @@
             font-family: 'Fredoka', sans-serif;
             background-color: #fdfdfd;
         }
-        /* Barra de desplazamiento divertida */
-        ::-webkit-scrollbar { width: 12px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #87CEEB; border-radius: 6px; }
-        ::-webkit-scrollbar-thumb:hover { background: #009068; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .page-break { page-break-after: always; break-after: page; }
+            body { background-color: white; }
+        }
+        .print-only { display: none; }
         
-        /* Animaciones */
-        .animate-spin-slow { animation: spin 3s linear infinite; }
-        .animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        /* Custom Scrollbar for fun feel */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #87CEEB; 
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #009068; 
+        }
         
+        /* Animation utilities */
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+        .animate-bounce-in {
+            animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .animate-pulse-slow {
+            animation: pulseSlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
         @keyframes bounceIn {
             0% { transform: scale(0.3); opacity: 0; }
             50% { transform: scale(1.05); opacity: 1; }
@@ -49,41 +76,19 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
-
-        #loading-fallback {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            color: #009068;
-            font-weight: 600;
-            gap: 0.6rem;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulseSlow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
     </style>
-  <script type="module" crossorigin src="/pequenos-musulmanes/assets/index-DTYfPB8W.js"></script>
-</head>
+    </head>
 <body>
-    <div id="loading-fallback">
-        <svg class="animate-spin-slow" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#87CEEB" stroke-width="3">
-            <circle cx="12" cy="12" r="10" stroke-linecap="round" stroke-dasharray="31.4 31.4"/>
-        </svg>
-        Cargando Pequeño Musulmán...
-    </div>
-
     <div id="root"></div>
-
-    <noscript style="text-align:center;padding:2rem;">
-        Necesitas activar JavaScript para jugar.
-    </noscript>
-
-    <script>
-      const removeLoading = () => {
-        const f = document.getElementById('loading-fallback');
-        if (f) f.remove();
-      };
-      // Esperamos un poco para quitar la pantalla de carga
-      window.addEventListener('load', () => setTimeout(removeLoading, 500));
-    </script>
-
+    
+    <script type="module" src="/index.tsx"></script> 
 </body>
 </html>
