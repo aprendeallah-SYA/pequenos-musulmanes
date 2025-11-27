@@ -6,6 +6,7 @@
     <title>Pequeño Musulmán - Aprende y Juega</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <script>
         tailwind.config = {
             theme: {
@@ -24,6 +25,7 @@
             }
         }
     </script>
+    
     <style>
         body {
             font-family: 'Fredoka', sans-serif;
@@ -35,23 +37,7 @@
             .page-break { page-break-after: always; break-after: page; }
             body { background-color: white; }
         }
-        .print-only { display: none; }
-        
-        /* Custom Scrollbar for fun feel */
-        ::-webkit-scrollbar {
-            width: 12px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #87CEEB; 
-            border-radius: 6px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #009068; 
-        }
-        
+
         /* Animation utilities */
         .animate-spin-slow {
             animation: spin 3s linear infinite;
@@ -59,6 +45,13 @@
         .animate-bounce-in {
             animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .animate-pulse-slow {
+            animation: pulseSlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
         @keyframes bounceIn {
             0% { transform: scale(0.3); opacity: 0; }
             50% { transform: scale(1.05); opacity: 1; }
@@ -69,56 +62,20 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
-
-        /* simple loading fallback so the page isn't blank */
-        #loading-fallback {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            color: #009068;
-            font-weight: 600;
-            gap: 0.6rem;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulseSlow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
     </style>
 
-<link rel="stylesheet" href="index.css">
-<script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
-  }
-}
-</script>
-  <script type="module" crossorigin src="index-DvEwW8jD.js"></script>
-</head>
+    </head>
 <body>
-    <!-- Loading / fallback visible until your React app mounts -->
-    <div id="loading-fallback" role="status" aria-live="polite">
-        <svg class="animate-spin-slow" width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#87CEEB" stroke-width="3" stroke-linecap="round" stroke-dasharray="31.4 31.4"/></svg>
-        Cargando Pequeño Musulmán...
-    </div>
-
     <div id="root"></div>
-
-    <noscript class="no-js-warning" style="display:block;text-align:center;padding:2rem;color:#555;">
-        Para ver esta página necesitas activar JavaScript en tu navegador.
-    </noscript>
-
-    <script>
-      // Remove loading fallback when the app mounts. Your React app can also remove it after hydration.
-      // This will not error if app's own mount code removes it instead.
-      const removeLoading = () => {
-        const f = document.getElementById('loading-fallback');
-        if (f) f.remove();
-      };
-      // try to remove after a short timeout in case app mounts fast
-      window.addEventListener('load', () => setTimeout(removeLoading, 500));
-      // If your React entry does that, this is just a safety net.
-    </script>
+    
+    <script type="module" src="/index.tsx"></script> 
 </body>
 </html>
