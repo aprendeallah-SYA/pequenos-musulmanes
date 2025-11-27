@@ -5,8 +5,13 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-      // **LA CORRECCIÓN CRÍTICA:** Define la ruta base para GitHub Pages
+      // 1. Ruta base para GitHub Pages (ya corregida)
       base: '/pequenos-musulmanes/', 
+      
+      // 2. LA NUEVA CORRECCIÓN: Salida a la carpeta 'docs'
+      build: { 
+        outDir: 'docs', 
+      },
       
       server: {
         port: 3000,
