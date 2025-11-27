@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-      // ESTA ES LA LÍNEA CRÍTICA PARA GITHUB PAGES
+      // **LA CORRECCIÓN CRÍTICA:** Define la ruta base para GitHub Pages
       base: '/pequenos-musulmanes/', 
       
       server: {
