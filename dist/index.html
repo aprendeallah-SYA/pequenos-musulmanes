@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pequeño Musulmán - Aprende y Juega</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Fredoka', 'sans-serif'],
+                    },
+                    colors: {
+                        'islamic-green': '#009068',
+                        'sand-gold': '#F4C430',
+                        'sky-blue': '#87CEEB',
+                        'kids-orange': '#FF8C00',
+                        'kids-purple': '#9370DB'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #fdfdfd;
+        }
+        /* Barra de desplazamiento divertida */
+        ::-webkit-scrollbar { width: 12px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #87CEEB; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb:hover { background: #009068; }
+        
+        /* Animaciones */
+        .animate-spin-slow { animation: spin 3s linear infinite; }
+        .animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        #loading-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #009068;
+            font-weight: 600;
+            gap: 0.6rem;
+        }
+    </style>
+  <script type="module" crossorigin src="/pequenos-musulmanes/assets/index-DTYfPB8W.js"></script>
+</head>
+<body>
+    <div id="loading-fallback">
+        <svg class="animate-spin-slow" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#87CEEB" stroke-width="3">
+            <circle cx="12" cy="12" r="10" stroke-linecap="round" stroke-dasharray="31.4 31.4"/>
+        </svg>
+        Cargando Pequeño Musulmán...
+    </div>
+
+    <div id="root"></div>
+
+    <noscript style="text-align:center;padding:2rem;">
+        Necesitas activar JavaScript para jugar.
+    </noscript>
+
+    <script>
+      const removeLoading = () => {
+        const f = document.getElementById('loading-fallback');
+        if (f) f.remove();
+      };
+      // Esperamos un poco para quitar la pantalla de carga
+      window.addEventListener('load', () => setTimeout(removeLoading, 500));
+    </script>
+
+</body>
+</html>
