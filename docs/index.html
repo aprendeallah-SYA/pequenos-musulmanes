@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pequeño Musulmán - Aprende y Juega</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Fredoka', 'sans-serif'],
+                    },
+                    colors: {
+                        'islamic-green': '#009068',
+                        'sand-gold': '#F4C430',
+                        'sky-blue': '#87CEEB',
+                        'kids-orange': '#FF8C00',
+                        'kids-purple': '#9370DB'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #fdfdfd;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .page-break { page-break-after: always; break-after: page; }
+            body { background-color: white; }
+        }
+        .print-only { display: none; }
+        
+        /* Custom Scrollbar for fun feel */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #87CEEB; 
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #009068; 
+        }
+        
+        /* Animation utilities */
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+        .animate-bounce-in {
+            animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .animate-pulse-slow {
+            animation: pulseSlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulseSlow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+      <script type="module" crossorigin src="/pequenos-musulmanes/assets/index-DTYfPB8W.js"></script>
+    </head>
+<body>
+    <div id="root"></div>
+     
+</body>
+</html>
